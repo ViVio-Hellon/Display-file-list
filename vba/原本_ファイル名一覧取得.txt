@@ -1,0 +1,614 @@
+Private Sub CommandButton1_Click()
+Application.ScreenUpdating = False
+Call Get_FileName
+Application.ScreenUpdating = True
+End Sub
+
+Private Sub CommandButton2_Click()
+If Me.T1.Text = "" Then Exit Sub
+Dim WsName As String: WsName = Me.T1.Text
+Dim SaveSh As Worksheet: Set SaveSh = ThisWorkbook.Sheets(WsName)
+Dim f As String: f = ThisWorkbook.Path
+Call PDFCREATE(f, SaveSh, WsName) 'ﾊﾟｽ,保存ｼｰﾄ,保存ﾌｧｲﾙ名
+End Sub
+
+Private Sub CommandButton3_Click()
+
+'DebugSpecificFilesDetailed
+
+'Debug.Print "T2の内容: [" & Me.T2.Text & "]"
+'Debug.Print "ThisWorkbook.Path: [" & ThisWorkbook.Path & "]"
+'
+'Dim fso As Object
+'Set fso = CreateObject("Scripting.FileSystemObject")
+'Debug.Print "T2のフォルダ存在確認: " & fso.FolderExists(Me.T2.Text)
+'Debug.Print "ThisWorkbookのフォルダ存在確認: " & fso.FolderExists(ThisWorkbook.Path)
+
+
+'C:\Users\xfa-ngyinazawa\Desktop\ファイル名一覧取得  直接実際のパスを入力してください
+Call ExecuteRenameBasicErrorHandling
+
+'' フォルダ内のファイルを一括リネーム
+'RenameFilesZenkakuToHankaku "C:\MyFolder", False
+'' サブフォルダも含めて一括リネーム
+'RenameFilesZenkakuToHankaku "C:\MyFolder", True
+'' 単一ファイルのリネーム
+'RenameSingleFileZenkakuToHankaku "C:\MyFolder\テストファイル.txt"
+End Sub
+
+Private Sub UserForm_Click()
+
+End Sub
+Option Explicit
+
+Sub ListFilesInFolder()
+    Dim fso As Object
+    Dim targetPath As String
+    Dim folder As Object
+    Dim subFolder As Object
+    Dim file As Object
+    Dim rowNum As Long
+    
+    ' --- 1. 対象のフォルダパスを指定 ---
+    targetPath = "C:\Users\xfa-ngykonpo\Desktop\python-web-tools-claude-inventory-data-import-x3wedf\"  ' ※実際のパスに変更してください（末尾の￥はあってもなくても動作します）
+    
+    ' FSO (FileSystemObject) の作成
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    ' フォルダが存在するか確認
+    If Not fso.FolderExists(targetPath) Then
+        MsgBox "指定されたフォルダが存在しません: " & targetPath, vbExclamation
+        Exit Sub
+    End If
+    
+    ' --- 2. 見出しの設定 ---
+    Cells.ClearContents
+    Range("A1").Value = "種別"
+    Range("B1").Value = "名称"
+    Range("C1").Value = "フルパス"
+    
+    rowNum = 2
+    
+    ' --- 3. フォルダの取得 ---
+    Set folder = fso.GetFolder(targetPath)
+    
+    ' フォルダ（サブフォルダ）名の転記
+    For Each subFolder In folder.subFolders
+        Cells(rowNum, 1).Value = "フォルダ"
+        Cells(rowNum, 2).Value = subFolder.Name
+        Cells(rowNum, 3).Value = subFolder.Path
+        rowNum = rowNum + 1
+    Next subFolder
+    
+    ' ファイル名の転記
+    For Each file In folder.Files
+        Cells(rowNum, 1).Value = "ファイル"
+        Cells(rowNum, 2).Value = file.Name
+        Cells(rowNum, 3).Value = file.Path
+        rowNum = rowNum + 1
+    Next file
+    
+    MsgBox "一覧の取得が完了しました！", vbInformation
+End Sub
+'*********************************************************
+' 　　指定フォルダ内のファイル名一覧を取得
+'*********************************************************
+Public Sub Get_FileName()
+    Const cnsTitle = "ファイル名一覧取得"
+    Const cnsDIR = "\*.*"
+    Dim xlAPP As Application
+    Dim strPath As String
+    Dim strFilename As String, strF As String
+    Dim GYO As Long
+
+    Dim fileName As String
+    Dim fileExt As String
+    Dim fileDate As Date
+    
+    Set xlAPP = Application
+    ' フォルダの場所を指定する
+    Dim flag As Boolean: flag = False
+    Select Case True
+    Case UF.OBA:    strF = "A班"
+    Case UF.OBB:    strF = "B班"
+    Case UF.OBC:    strF = "C班"
+    Case UF.OBD:    strF = "D班"
+    Case UF.OBHIRU: strF = "日勤"
+    Case Else:      flag = True
+    End Select
+    strPath = ThisWorkbook.Path & "\" & strF 'OBのどれかがtrue
+    If flag Then strPath = ThisWorkbook.Path 'trueなし
+
+    ' フォルダの存在確認 --- 必要な場合のみ記述 ---
+    If Dir(strPath, vbDirectory) = "" Then
+        MsgBox "指定のフォルダは存在しません。", vbExclamation, cnsTitle
+        Exit Sub
+    End If
+    
+    If WsCheck("一覧") = False Then
+      Call AddWS("一覧")
+    End If
+    
+    Dim WS As Worksheet: Set WS = ThisWorkbook.Sheets("一覧")
+    Dim LastR As Long: LastR = WS.Cells(Rows.Count, 3).End(xlUp).Row
+    
+    Dim Temp, LongT
+ 
+    WS.Cells.ClearContents 'クリア
+ 
+    ' 先頭のファイル名の取得
+    strFilename = Dir(strPath & cnsDIR, vbNormal)
+    Dim Buf
+    ' ファイルが見つからなくなるまで繰り返す
+    '6-4-2-3_新５点バキューム作業***************文書番号_作業名
+    
+    ' フォルダ内のファイルを取得_2023.10.31＊修正
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set folder = fso.GetFolder(strPath)
+    GYO = 1
+    For Each file In folder.Files
+        fileName = file.Name
+        fileDate = file.DateLastModified
+        Temp = Split(fileName, "_")
+        Dim Cont As Long: Cont = UBound(Temp)
+        
+        If Cont = 1 Then '_の有無対策
+          LongT = Split(Temp(0), "-")
+          If (Temp(0) <> "") And (Not IsEmpty(LongT)) Then WS.Cells(GYO, 1) = Val(LongT(0)) '配列がある　かつ　空欄でない
+          WS.Cells(GYO, 2).Value = "'" & Temp(0)
+          Buf = Split(Temp(1), ".")
+          If (Buf(0) <> "") And (Not IsEmpty(Buf)) Then WS.Cells(GYO, 3) = Buf(0)
+          If (Buf(0) <> "") And (Not IsEmpty(Buf)) Then WS.Cells(GYO, 5) = Buf(UBound(Buf))
+          WS.Cells(GYO, 4) = fileDate 'FileDateTime(strPath & "\" & strFilename)
+          If WS.Cells(GYO, 1) = 0 Then WS.Cells(GYO, 1).Value = "" 'ファイル名に_の使用があるが数字ではない場合
+        ElseIf Cont = 0 Then
+          Dim LenCount As Long:   LenCount = Len(fileName)
+          Dim InStrCount As Long: InStrCount = InStrRev(fileName, ".") '最後の文字位置から検索
+          fileExt = Right(fileName, LenCount - InStrCount)
+          Dim strC As String:     strC = Replace(fileName, "." & fileExt, "") '拡張子をファイル名から取り除く
+          
+          WS.Cells(GYO, 3) = strC
+          WS.Cells(GYO, 5) = fileExt
+          WS.Cells(GYO, 4) = fileDate
+        End If
+        GYO = GYO + 1 ' 行を加算
+    Next file
+ 'こちらのコード使用時　_や.をファイル名に多用しているとファイル名がすべて表示できない
+'    Do While strFilename <> ""
+'        Temp = Split(strFilename, "_") '_でわける
+'        Dim Cont As Long: Cont = UBound(Temp)
+'          If Cont = 1 Then '_の有無対策
+'            LongT = Split(Temp(0), "-")
+'            GYO = GYO + 1 ' 行を加算
+'            If (Temp(0) <> "") And (Not IsEmpty(LongT)) Then WS.Cells(GYO, 1).Value = Val(LongT(0)) '配列がある　かつ　空欄でない
+'            WS.Cells(GYO, 2).Value = "'" & Temp(0)
+'            Buf = Split(Temp(1), ".")
+'            If (Buf(0) <> "") And (Not IsEmpty(Buf)) Then WS.Cells(GYO, 3).Value = Buf(0)
+'            If (Buf(0) <> "") And (Not IsEmpty(Buf)) Then WS.Cells(GYO, 5).Value = Buf(UBound(Buf))
+'            WS.Cells(GYO, 4).Value = FileDateTime(strPath & "\" & strFilename)
+'            If WS.Cells(GYO, 1) = 0 Then WS.Cells(GYO, 1).Value = "" 'ファイル名に_の使用があるが数字ではない場合
+'          ElseIf Cont = 0 Then
+'            GYO = GYO + 1 ' 行を加算
+'            Buf = Split(strFilename, ".")
+'            If (Buf(0) <> "") And (Not IsEmpty(Buf)) Then WS.Cells(GYO, 3).Value = Buf(0)
+'            If (Buf(0) <> "") And (Not IsEmpty(Buf)) Then WS.Cells(GYO, 5).Value = Buf(UBound(Buf))
+'            WS.Cells(GYO, 4).Value = FileDateTime(strPath & "\" & strFilename)
+'          End If
+'        ' 次のファイル名を取得
+'        strFilename = Dir()
+'    Loop
+    WS.Columns("A:A").NumberFormatLocal = "0_ "
+    WS.Columns("B:B").NumberFormatLocal = "@"
+    WS.Columns("C:C").NumberFormatLocal = "@"
+    WS.Cells.EntireColumn.AutoFit
+    
+    WS.Range("A1:E300").Sort Key1:=WS.Range("A1"), order1:=xlAscending
+
+    WS.Columns("A:A").Delete Shift:=xlToLeft
+    
+End Sub
+'-----------------<< End of Source >>-----------------
+Public Sub UFOP()
+UF.Show vbModeless
+End Sub
+
+'任意のﾜｰｸｼｰﾄの存在ﾁｪｯｸ
+Public Function WsCheck(ByRef WsName As String) As Boolean
+Dim WS As Worksheet 'ﾜｰｸｼｰﾄ
+WsCheck = False
+For Each WS In ThisWorkbook.Worksheets
+  If WS.Name = WsName Then
+    WsCheck = True
+    Exit For
+  End If
+Next WS
+Set WS = Nothing
+End Function
+'指定の名前のワークシートを追加
+Sub AddWS(ByRef WsName As String)
+Application.DisplayAlerts = False
+Dim WS As Worksheet 'ﾜｰｸｼｰﾄ
+For Each WS In ThisWorkbook.Worksheets
+  If WS.Name = WsName Then
+    Worksheets(WsName).Delete
+    Exit For
+  End If
+Next WS
+ThisWorkbook.Worksheets.Add(before:=Worksheets(1)).Name = WsName '右端に追加
+Set WS = Nothing 'ｵﾌﾞｼﾞｪｸﾄの解放
+Application.DisplayAlerts = True
+End Sub
+
+'PDFファイルを作成する ｼｰﾄの印刷範囲設定が反映される
+Public Sub PDFCREATE(PDFFileName As String, sh1 As Worksheet, Fname As String) 'パス,保存シート,保存ファイル名
+Dim fileName As String '保存先フォルダパス＆ファイル名
+fileName = PDFFileName & "\" & Fname & ".pdf"
+sh1.ExportAsFixedFormat Type:=xlTypePDF, fileName:=fileName, Quality:=xlQualityStandard, From:=1, To:=1
+'MsgBox ThisWorkbook.Path & vbCrLf & "PDFファイルに保存しました。", vbInformation
+End Sub
+'
+'Dim f As String: f = SaveDateLocate(KouPath, Ln)   'ﾊﾟｽ,ﾌｧｲﾙﾗｲﾝ名_必要ﾌｫﾙﾀﾞ生成とﾌｧｲﾙﾊﾟｽ
+'Call PDFCREATE(f, SaveSh, SaveSh.Cells(2, 3)) 'ﾊﾟｽ,保存ｼｰﾄ,保存ﾌｧｲﾙ名
+
+Option Explicit
+
+' * 指定フォルダ内のすべてのファイルの全角文字を半角文字に変換してリネームする
+' * @param folderPath リネーム対象のフォルダパス
+' * @param recursive サブフォルダも処理する場合はTrue（デフォルト：False）
+' * @return 処理結果（成功した場合True、失敗した場合False）
+Public Function RenameFilesZenkakuToHankaku(folderPath As String, Optional recursive As Boolean = False, Optional renameFolders As Boolean = False) As Boolean
+Dim fso As Object
+Dim folder As Object
+Dim file As Object
+Dim subFolder As Object
+Dim originalName As String
+Dim newName As String
+Dim renameCount As Long
+Dim errorCount As Long
+Dim subFolders As Collection
+Dim sf As Variant
+
+' FileSystemObjectを初期化
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' フォルダの存在確認
+If Not fso.FolderExists(folderPath) Then
+    Debug.Print "エラー: 指定されたフォルダが存在しません - " & folderPath
+    RenameFilesZenkakuToHankaku = False
+    Exit Function
+End If
+
+On Error GoTo ErrorHandler
+
+Set folder = fso.GetFolder(folderPath)
+renameCount = 0
+errorCount = 0
+
+Debug.Print "処理開始: " & folderPath
+
+' フォルダ内のファイルを処理
+For Each file In folder.Files
+    originalName = file.Name
+    newName = ConvertZenkakuToHankaku(originalName)
+    
+    Debug.Print "チェック中: " & originalName & " → " & newName & " (変更必要: " & (originalName <> newName) & ")"
+    
+    ' ファイル名に変更がある場合のみリネーム実行
+    If originalName <> newName Then
+        If RenameFile(file.Path, fso.BuildPath(file.parentFolder.Path, newName)) Then
+            Debug.Print "リネーム成功: " & originalName & " → " & newName
+            renameCount = renameCount + 1
+        Else
+            Debug.Print "リネーム失敗: " & originalName
+            errorCount = errorCount + 1
+        End If
+    End If
+Next file
+
+' 直下のサブフォルダ名のリネーム処理（renameFolders = Trueの場合）
+If renameFolders Then
+    Set subFolders = New Collection
+    
+    ' サブフォルダ名とパスを記録
+    For Each subFolder In folder.subFolders
+        subFolders.Add Array(subFolder.Name, subFolder.Path)
+    Next subFolder
+    
+    ' フォルダ名をリネーム
+    For Each sf In subFolders
+        originalName = sf(0)
+        newName = ConvertZenkakuToHankaku(originalName)
+        
+        If originalName <> newName Then
+            Dim oldPath As String
+            Dim newPath As String
+            oldPath = sf(1)
+            newPath = fso.BuildPath(fso.GetParentFolderName(oldPath), newName)
+            
+            If RenameFolder(oldPath, newPath, fso) Then
+                Debug.Print "フォルダリネーム成功: " & originalName & " → " & newName
+                renameCount = renameCount + 1
+            Else
+                Debug.Print "フォルダリネーム失敗: " & originalName
+                errorCount = errorCount + 1
+            End If
+        End If
+    Next sf
+End If
+
+' サブフォルダの再帰処理（recursive = Trueの場合）
+If recursive Then
+    ' 更新されたフォルダ情報を再取得
+    Set folder = fso.GetFolder(folderPath)
+    Set subFolders = New Collection
+    For Each subFolder In folder.subFolders
+        subFolders.Add subFolder.Path
+    Next subFolder
+    
+    ' 各サブフォルダを再帰的に処理
+    For Each sf In subFolders
+        If fso.FolderExists(sf) Then
+            If Not RenameFilesZenkakuToHankaku(CStr(sf), True, renameFolders) Then
+                errorCount = errorCount + 1
+            End If
+        End If
+    Next sf
+End If
+
+Debug.Print "処理完了: リネーム成功 " & renameCount & " 件, エラー " & errorCount & " 件"
+
+RenameFilesZenkakuToHankaku = (errorCount = 0)
+Exit Function
+
+ErrorHandler:
+Debug.Print "エラーが発生しました: " & Err.Description
+RenameFilesZenkakuToHankaku = False
+End Function
+
+' フォルダリネーム用のヘルパー関数
+Private Function RenameFolder(oldPath As String, newPath As String, fso As Object) As Boolean
+On Error GoTo ErrorHandler
+
+If fso.FolderExists(newPath) Then
+    Debug.Print "リネーム先フォルダが既に存在します: " & newPath
+    RenameFolder = False
+    Exit Function
+End If
+
+fso.GetFolder(oldPath).Name = fso.GetFileName(newPath)
+RenameFolder = True
+Exit Function
+
+ErrorHandler:
+Debug.Print "フォルダリネームエラー: " & Err.Description
+RenameFolder = False
+End Function
+
+Public Sub ExecuteRenameBasicErrorHandling()
+On Error GoTo ErrorHandler
+Dim fso As Object
+Set fso = CreateObject("Scripting.FileSystemObject")
+' 入力チェック
+If UF.T2.Text = "" Then Exit Sub
+Dim folderPath As String
+folderPath = Trim(UF.T2.Text)
+' "ThisWorkbook.Path"文字列を実際のパスに置き換え
+If folderPath = "ThisWorkbook.Path" Then
+    folderPath = ThisWorkbook.Path
+    Debug.Print "ThisWorkbook.Pathに置き換え: " & folderPath
+End If
+' フォルダの存在チェック
+If Not fso.FolderExists(folderPath) Then
+    Debug.Print "フォルダが存在しません: " & folderPath
+    Exit Sub
+End If
+Dim parentFolder As Object
+Set parentFolder = fso.GetFolder(folderPath)
+Debug.Print "フォルダ名: " & parentFolder.Name
+Debug.Print "フルパス: " & parentFolder.Path
+
+' チェックボックスの状態を取得してフォルダリネームを制御
+Dim shouldRenameFolders As Boolean
+shouldRenameFolders = UF.FolderTrue.Value  ' チェックボックスの値を取得
+
+' リネーム実行（recursive = Falseでも直下フォルダはリネーム可能）
+RenameFilesZenkakuToHankaku folderPath, False, shouldRenameFolders
+Exit Sub
+ErrorHandler:
+Debug.Print "エラー発生: " & Err.Description & " (パス: " & folderPath & ")"
+On Error Resume Next
+Set parentFolder = Nothing
+Set fso = Nothing
+End Sub
+
+
+
+' * 全角文字を半角文字に変換する（修正版）
+' * @param inputStr 変換対象の文字列
+' * @return 変換後の文字列
+Private Function ConvertZenkakuToHankaku(inputStr As String) As String
+Dim result As String
+Dim i As Long
+Dim char As String
+Dim asciiCode As Long
+
+result = ""
+
+For i = 1 To Len(inputStr)
+    char = Mid(inputStr, i, 1)
+    asciiCode = AscW(char)
+    
+    ' 負の値を正の値に変換 (Unicode文字で発生する場合がある)
+    If asciiCode < 0 Then
+        asciiCode = asciiCode + 65536
+    End If
+    
+    Select Case asciiCode
+        ' 全角英字大文字 (Ａ～Ｚ) → 半角 (A～Z)
+        Case 65313 To 65338  ' &HFF21 To &HFF3A
+            result = result & Chr(asciiCode - 65313 + 65) ' 65 = Asc("A")
+        
+        ' 全角英字小文字 (ａ～ｚ) → 半角 (a～z)
+        Case 65345 To 65370  ' &HFF41 To &HFF5A
+            result = result & Chr(asciiCode - 65345 + 97) ' 97 = Asc("a")
+            
+        ' 全角数字 (０～９) → 半角 (0～9)
+        Case 65296 To 65305  ' &HFF10 To &HFF19
+            result = result & Chr(asciiCode - 65296 + 48)  ' 48 = Asc("0")
+        
+        ' 全角スペース (　) → 半角 ( )
+        Case 12288  ' &H3000
+            result = result & " "
+        
+        ' その他の全角記号の変換
+        Case 65281: result = result & "!"       ' ！ → !
+        Case 65282: result = result & Chr(34)   ' " → "
+        Case 65283: result = result & "#"       ' ＃ → #
+        Case 65284: result = result & "$"       ' ＄ → $
+        Case 65285: result = result & "%"       ' ％ → %
+        Case 65286: result = result & "&"       ' ＆ → &
+        Case 65287: result = result & "'"       ' ' → '
+        Case 65288: result = result & "("       ' （ → (
+        Case 65289: result = result & ")"       ' ） → )
+        Case 65290: result = result & "*"       ' ＊ → *
+        Case 65291: result = result & "+"       ' ＋ → +
+        Case 65292: result = result & ","       ' ， → ,
+        Case 65293: result = result & "-"       ' － → -
+        Case 65294: result = result & "."       ' ． → .
+        Case 65295: result = result & "/"       ' ／ → /
+        Case 65306: result = result & ":"       ' ： → :
+        Case 65307: result = result & ";"       ' ； → ;
+        Case 65308: result = result & "<"       ' ＜ → <
+        Case 65309: result = result & "="       ' ＝ → =
+        Case 65310: result = result & ">"       ' ＞ → >
+        Case 65311: result = result & "?"       ' ？ → ?
+        Case 65312: result = result & "@"       ' ＠ → @
+        Case 65339: result = result & "["       ' ［ → [
+        Case 65340: result = result & "\"       ' ＼ → \
+        Case 65341: result = result & "]"       ' ］ → ]
+        Case 65342: result = result & "^"       ' ＾ → ^
+        Case 65343: result = result & "_"       ' ＿ → _
+        Case 65344: result = result & "`"       ' ｀ → `
+        Case 65371: result = result & "{"       ' ｛ → {
+        Case 65372: result = result & "|"       ' ｜ → |
+        Case 65373: result = result & "}"       ' ｝ → }
+        Case 65374: result = result & "~"       ' ～ → ~
+        
+        Case Else
+            ' 変換対象外の文字はそのまま連結
+            result = result & char
+    End Select
+Next i
+
+ConvertZenkakuToHankaku = result
+End Function
+' * ファイルのリネームを実行する（既存ファイル対応版）
+' * @param oldPath 元のファイルパス
+' * @param newPath 新しいファイルパス
+' * @return 処理結果（成功した場合True、失敗した場合False）
+Private Function RenameFile(oldPath As String, newPath As String) As Boolean
+Dim fso As Object
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+On Error GoTo ErrorHandler
+
+' 新しいファイル名が既に存在する場合、番号を付ける
+If fso.FileExists(newPath) Then
+    Dim baseName As String
+    Dim extension As String
+    Dim folderPath As String
+    Dim counter As Long  ' Integer → Long に変更
+    Dim testPath As String
+    
+    baseName = fso.GetBaseName(newPath)
+    extension = fso.GetExtensionName(newPath)
+    folderPath = fso.GetParentFolderName(newPath)
+    
+    counter = 1
+    Do
+        If extension <> "" Then
+            testPath = fso.BuildPath(folderPath, baseName & "_" & counter & "." & extension)
+        Else
+            testPath = fso.BuildPath(folderPath, baseName & "_" & counter)
+        End If
+        counter = counter + 1
+    Loop While fso.FileExists(testPath)
+    
+    newPath = testPath
+    Debug.Print "既存ファイルのため番号付き: " & fso.GetFileName(newPath)
+End If
+
+' ファイル名の変更を実行
+fso.MoveFile oldPath, newPath
+RenameFile = True
+Exit Function
+
+ErrorHandler:
+Debug.Print "リネームエラー: " & Err.Description & " (" & oldPath & " → " & newPath & ")"
+RenameFile = False
+End Function
+' * デバッグ用：特定ファイル名の変換確認（詳細版）
+Public Sub DebugSpecificFilesDetailed()
+Debug.Print "=== 詳細変換テスト ==="
+Dim i As Long
+Dim testFiles As Variant
+testFiles = Array("ＧＧＬ9アｂｃｒ.txt", "＿  ＿～.txt")
+
+Dim j As Long
+For j = 0 To UBound(testFiles)
+    Dim testStr As String
+    testStr = testFiles(j)
+    
+    Debug.Print "=== テスト文字列: " & testStr & " ==="
+    
+    For i = 1 To Len(testStr)
+        Dim char As String
+        Dim rawCode As Long
+        Dim adjustedCode As Long
+        
+        char = Mid(testStr, i, 1)
+        rawCode = AscW(char)
+        adjustedCode = rawCode
+        
+        ' 負の値を正の値に変換
+        If adjustedCode < 0 Then
+            adjustedCode = adjustedCode + 65536
+        End If
+        
+        Debug.Print "文字[" & i & "]: " & char & " 生コード: " & rawCode & " 調整後: " & adjustedCode & " (16進: &H" & Hex(adjustedCode) & ")"
+        
+        ' 変換対象かチェック
+        Dim isTarget As Boolean
+        Dim convertedChar As String
+        isTarget = False
+        convertedChar = char
+        
+        Select Case adjustedCode
+            Case 65296 To 65305  ' 全角数字
+                isTarget = True
+                convertedChar = Chr(adjustedCode - 65296 + 48)
+            Case 65313 To 65338  ' 全角英大文字
+                isTarget = True
+                convertedChar = Chr(adjustedCode - 65313 + 65)
+            Case 65345 To 65370  ' 全角英小文字
+                isTarget = True
+                convertedChar = Chr(adjustedCode - 65345 + 97)
+            Case 12288  ' 全角スペース
+                isTarget = True
+                convertedChar = " "
+            Case 65295: convertedChar = "_": isTarget = True  ' _
+            Case 65374: convertedChar = "~": isTarget = True  ' ～
+        End Select
+        
+        Debug.Print "  → 変換対象: " & isTarget & " 変換後文字: " & convertedChar
+    Next i
+    
+    Debug.Print "変換結果: " & ConvertZenkakuToHankaku(testStr)
+    Debug.Print "変換必要: " & (testStr <> ConvertZenkakuToHankaku(testStr))
+    Debug.Print ""
+Next j
+End Sub
+
+
+
