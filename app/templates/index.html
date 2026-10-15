@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tool-token" content="{{TOKEN}}">
+<meta name="heartbeat-seconds" content="{{HEARTBEAT}}">
+<title>{{APP_NAME}}</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/tokens.css?v={{VERSION}}">
+<link rel="stylesheet" href="/static/css/app.css?v={{VERSION}}">
+</head>
+<body>
+<header class="bar">
+  <h1>{{APP_NAME}}</h1><span class="ver">VER{{VERSION}}</span>
+  <div class="facts">
+    <span class="fact" id="fact-base"><b>基準フォルダ</b><span id="fact-base-text">読み込み中…</span></span>
+  </div>
+  <button type="button" class="end" id="btn-exit">終了</button>
+</header>
+<div class="offline" id="offline" hidden role="alert">
+  <span>アプリとの接続が切れています。終了したか、止まっています。</span>
+  <button type="button" class="btn small" id="btn-reload">読み込み直す</button>
+</div>
+
+<div class="work">
+  <section class="result" aria-label="結果">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="view-list">一覧</button>
+      <button type="button" role="tab" id="tab-rename" aria-selected="false" aria-controls="view-rename">全角→半角</button>
+    </div>
+
+    <div id="view-list" role="tabpanel" aria-labelledby="tab-list" class="scroll" style="display:flex;flex-direction:column">
+      <div class="head" id="list-head" hidden>
+        <span class="title" id="list-title"></span>
+        <span class="meta" id="list-meta"></span>
+      </div>
+      <div id="list-notice"></div>
+      <div class="scroll">
+        <div class="empty" id="list-empty">班を選んで「一覧を取る」を押すと、ここにファイルの一覧が出ます。</div>
+        <table id="list-table" hidden>
+          <thead><tr><th class="num">#</th><th>文書番号</th><th>名称</th><th>更新日時</th><th>拡張子</th></tr></thead>
+          <tbody id="list-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="view-rename" role="tabpanel" aria-labelledby="tab-rename" class="scroll" style="display:none;flex-direction:column">
+      <div class="head" id="rename-head" hidden>
+        <span class="title" id="rename-title"></span>
+        <span class="meta" id="rename-meta"></span>
+      </div>
+      <div id="rename-notice"></div>
+      <div class="scroll">
+        <div class="empty" id="rename-empty">フォルダを入れて「変わる名前を見る」を押すと、直す前の名前と直したあとの名前がここに並びます。<br>この時点ではまだ何も変えません。</div>
+        <table id="rename-table" hidden>
+          <thead><tr><th class="num">#</th><th>種類</th><th>いまの名前</th><th></th><th>直したあとの名前</th><th>扱い</th></tr></thead>
+          <tbody id="rename-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel" aria-label="操作">
+    <section class="card" aria-labelledby="h-list">
+      <h2 id="h-list"><span class="n">1</span>一覧を取る</h2>
+      <div class="groups" id="groups" role="radiogroup" aria-label="班"></div>
+      <div class="row">
+        <button type="button" class="btn run wide" id="btn-list">一覧を取る</button>
+        <button type="button" class="btn print" id="btn-print" disabled>印刷 / PDF</button>
+      </div>
+      <p class="help">印刷 / PDF は別の窓で開きます。PDF にするときは印刷先で「PDF として保存」を選びます。</p>
+      <div class="status" id="list-status" aria-live="polite"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-rename">
+      <h2 id="h-rename"><span class="n">2</span>ファイル名を全角→半角に直す</h2>
+      <div class="field">
+        <label for="rename-folder">直すフォルダ</label>
+        <input type="text" id="rename-folder" autocomplete="off" spellcheck="false" placeholder="C:\… または \\サーバ\…">
+      </div>
+      <div class="row">
+        <button type="button" class="btn small" id="btn-rename-base">基準フォルダを入れる</button>
+        <button type="button" class="btn small" id="btn-rename-group">選んだ班のフォルダを入れる</button>
+        <button type="button" class="btn small" id="btn-rename-browse">参照…</button>
+      </div>
+      <label class="check"><input type="checkbox" id="rename-folders">直下のフォルダ名も直す</label>
+      <p class="help">英数字・記号(！〜～)と全角の空白だけを半角にします。カタカナや「〜」は変えません。同じ名前があれば「_1」「_2」…を付けます。</p>
+      <div class="row">
+        <button type="button" class="btn run wide" id="btn-preview">変わる名前を見る</button>
+      </div>
+      <div class="row">
+        <button type="button" class="btn commit wide" id="btn-run" disabled>この内容で直す</button>
+      </div>
+      <div class="status" id="rename-status" aria-live="polite"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-base">
+      <h2 id="h-base"><span class="n">3</span>基準フォルダ</h2>
+      <p class="help">A班・B班・C班・D班・日勤のフォルダが入っている場所です(Excel 版でブックを置いていた場所)。空にするとこのアプリのフォルダになります。</p>
+      <div class="field">
+        <label for="base-dir">基準フォルダ</label>
+        <input type="text" id="base-dir" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="row">
+        <button type="button" class="btn small" id="btn-base-browse">参照…</button>
+        <button type="button" class="btn wide" id="btn-base-save">保存</button>
+      </div>
+      <div class="status" id="base-status" aria-live="polite"></div>
+    </section>
+  </aside>
+</div>
+
+<dialog id="browse">
+  <div class="dlg">
+    <header><strong>フォルダを選ぶ</strong><span class="path" id="browse-path"></span></header>
+    <div style="padding:8px 14px" class="roots" id="browse-roots"></div>
+    <div class="status" id="browse-msg" style="padding:0 14px"></div>
+    <ul id="browse-list"></ul>
+    <footer>
+      <button type="button" class="btn small" id="browse-up">上のフォルダへ</button>
+      <button type="button" class="btn small" id="browse-cancel">やめる</button>
+      <button type="button" class="btn run" id="browse-ok">このフォルダにする</button>
+    </footer>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script type="module" src="/static/js/app.js?v={{VERSION}}"></script>
+</body>
+</html>

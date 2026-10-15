@@ -1,0 +1,93 @@
+/*
+  デザイントークン — 色・書体・寸法の唯一の出どころ
+  python-web-tools(梱包資材総合ツール)の tokens.css から、この画面で使うものだけを写した。
+  同じ端末で並べて使うので、上の帯・骨格のティール・操作の色・文字の段をそろえる。
+
+  3つの状態に対応する:
+    :root                        … ライト(既定)
+    prefers-color-scheme: dark   … OS がダーク、かつ明示指定なし
+    [data-theme="dark"|"light"]  … 明示的に選んだ場合
+*/
+:root{
+  --ground:#f3f6f8; --surface:#ffffff; --sunken:#f1f6f8; --raised:#e9f1f4;
+  --ink:#17232d; --muted:#5b6d79; --faint:#7d8f9a;
+  --rule:#dde5ea; --hairline:#e9eff2;
+  --accent:#0b6d86; --accent-soft:#e7f2f5; --accent-line:#bcdde5;
+  --focus:#0b6d86; --field-line:#87969f;
+
+  --bar-a:#153247; --bar-b:#1e6079; --bar-ink:#ffffff; --bar-muted:#c3dbe4;
+  --bar-alert:#ffc4bf; --bar-ok:#8ff0c4;
+  --bar-face:#ffffff14; --bar-face-on:#ffffff26; --bar-edge:#ffffff33; --bar-focus:#7fe3ea;
+
+  --act-run:#265aa0;     --act-run-fg:#ffffff;
+  --act-print:#923d23;   --act-print-fg:#ffffff;
+  --act-commit:#9f2a2c;  --act-commit-fg:#ffffff;
+  --act-idle:#edf3f6;    --act-idle-fg:#294f63; --act-idle-line:#87969f;
+
+  --state-ok:#27633a; --state-warn:#883c02; --state-error:#982326; --state-info:#20549a;
+  --warn-bg:#fdf0f0; --warn-fg:#982326;
+  --caution-bg:#fdf3e6; --caution-fg:#883c02;
+  --ok-bg:#eef6f1;
+  --info-bg:#eef4fb; --info-fg:#20549a;
+
+  --radius:10px; --radius-sm:7px; --radius-xs:6px; --pill:999px;
+  --shadow-sm:0 5px 18px rgb(21 56 77 / 5%);
+  --shadow:0 2px 6px rgb(21 56 77 / 4%), 0 10px 30px -8px rgb(21 56 77 / 12%);
+  --shadow-pop:0 25px 80px rgb(14 37 53 / 28%), 0 4px 12px rgb(14 37 53 / 10%);
+  --scrim:rgb(13 36 51 / 62%);
+
+  --sans:system-ui,-apple-system,"Segoe UI","Yu Gothic UI","Meiryo UI","Hiragino Sans",sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"BIZ UDGothic","MS Gothic",monospace;
+
+  --fs-2xs:10px; --fs-xs:11px; --fs-sm:12px; --fs-md:13px; --fs-lg:15px; --fs-xl:19px;
+  --lh-tight:1.3; --lh:1.55;
+  --hit:38px; --row-h:26px; --cell-x:8px; --cell-y:4px; --pad-card:14px; --gap:10px; --gap-sm:6px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#101820; --surface:#182129; --sunken:#141c23; --raised:#1f2a33;
+    --ink:#e2eaef; --muted:#95a7b2; --faint:#7a8d99;
+    --rule:#28343d; --hairline:#212c34;
+    --accent:#5cc2d4; --accent-soft:#152b33; --accent-line:#2d4d58;
+    --focus:#5cc2d4; --field-line:#7a8d99;
+    --bar-a:#0e2130; --bar-b:#154a5e; --bar-muted:#a9c6d1;
+    --bar-face:#ffffff12; --bar-face-on:#ffffff22; --bar-edge:#ffffff2b;
+    --act-run:#6a9fee;     --act-run-fg:#101720;
+    --act-print:#da865d;   --act-print-fg:#101720;
+    --act-commit:#e57980;  --act-commit-fg:#101720;
+    --act-idle:#232f37;    --act-idle-fg:#cfe0e7; --act-idle-line:#7a8d99;
+    --state-ok:#72be94; --state-warn:#d2a15c; --state-error:#e49093; --state-info:#7faee9;
+    --warn-bg:#331e21; --warn-fg:#eb9a9d;
+    --caution-bg:#2e2416; --caution-fg:#e0b06a;
+    --ok-bg:#16271e;
+    --info-bg:#182634; --info-fg:#7faee9;
+    --shadow-sm:0 5px 18px rgb(0 0 0 / 32%);
+    --shadow:0 2px 6px rgb(0 0 0 / 28%), 0 10px 30px -8px rgb(0 0 0 / 50%);
+    --shadow-pop:0 25px 80px rgb(0 0 0 / 62%), 0 4px 12px rgb(0 0 0 / 32%);
+    --scrim:rgb(6 16 22 / 68%);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101820; --surface:#182129; --sunken:#141c23; --raised:#1f2a33;
+  --ink:#e2eaef; --muted:#95a7b2; --faint:#7a8d99;
+  --rule:#28343d; --hairline:#212c34;
+  --accent:#5cc2d4; --accent-soft:#152b33; --accent-line:#2d4d58;
+  --focus:#5cc2d4; --field-line:#7a8d99;
+  --bar-a:#0e2130; --bar-b:#154a5e; --bar-muted:#a9c6d1;
+  --bar-face:#ffffff12; --bar-face-on:#ffffff22; --bar-edge:#ffffff2b;
+  --act-run:#6a9fee;     --act-run-fg:#101720;
+  --act-print:#da865d;   --act-print-fg:#101720;
+  --act-commit:#e57980;  --act-commit-fg:#101720;
+  --act-idle:#232f37;    --act-idle-fg:#cfe0e7; --act-idle-line:#7a8d99;
+  --state-ok:#72be94; --state-warn:#d2a15c; --state-error:#e49093; --state-info:#7faee9;
+  --warn-bg:#331e21; --warn-fg:#eb9a9d;
+  --caution-bg:#2e2416; --caution-fg:#e0b06a;
+  --ok-bg:#16271e;
+  --info-bg:#182634; --info-fg:#7faee9;
+  --shadow-sm:0 5px 18px rgb(0 0 0 / 32%);
+  --shadow:0 2px 6px rgb(0 0 0 / 28%), 0 10px 30px -8px rgb(0 0 0 / 50%);
+  --shadow-pop:0 25px 80px rgb(0 0 0 / 62%), 0 4px 12px rgb(0 0 0 / 32%);
+  --scrim:rgb(6 16 22 / 68%);
+  color-scheme:dark;
+}

@@ -1,0 +1,37 @@
+{
+  "_説明": "VBA Get_FileName の規則をコードから手で読んで書いた正解。Python の実行結果から作ったものではない。key=並べ替えキー(null=空欄)。strict=直す前の VBA、fixed=直した版(Q2・Q3)。実機の Excel で確かめたら source を excel にする。",
+  "source": "vba-code-reading",
+  "cases": [
+    {"name": "6-4-2-3_新５点バキューム作業.pdf", "key": 6, "doc_no": "6-4-2-3", "title": "新５点バキューム作業", "ext": "pdf"},
+    {"name": "12-1_手順書.v2.xlsx", "key": 12, "doc_no": "12-1", "title": "手順書", "ext": "xlsx", "why": "K2 間の v2 は出ない"},
+    {"name": "6-1_手順書", "key": 6, "doc_no": "6-1", "title": "手順書", "ext": "手順書", "why": "K3 拡張子なし"},
+    {"name": "abc_手順.pdf", "key": null, "doc_no": "abc", "title": "手順", "ext": "pdf"},
+    {"name": "_手順.pdf", "key": null, "doc_no": "", "title": "手順", "ext": "pdf"},
+    {"name": "手順書.pdf", "key": null, "doc_no": "", "title": "手順書", "ext": "pdf"},
+    {"name": "a.txt.txt", "key": null, "doc_no": "", "title": "a", "ext": "txt", "why": "K9"},
+    {"name": "README", "key": null, "doc_no": "", "title": "README", "ext": "README"},
+    {"name": "abc_.pdf", "key": null, "doc_no": "abc", "title": "", "ext": ""},
+    {"name": "~$6-4_手順.xlsx", "key": null, "doc_no": "~$6-4", "title": "手順", "ext": "xlsx", "why": "K8 Val(\"~$6\")=0"},
+    {"name": "&H10-1_x.pdf", "key": 16, "doc_no": "&H10-1", "title": "x", "ext": "pdf", "why": "K6 16進"},
+    {"name": "&HFFFF-1_x.pdf", "key": -1, "doc_no": "&HFFFF-1", "title": "x", "ext": "pdf", "why": "K6 Integer"},
+    {"name": "1e3-1_x.pdf", "key": 1000, "doc_no": "1e3-1", "title": "x", "ext": "pdf"},
+    {"name": " 1 2-3_x.pdf", "key": 12, "doc_no": " 1 2-3", "title": "x", "ext": "pdf", "why": "空白を詰める"},
+    {"name": "1.5-2_x.pdf", "key": 1.5, "doc_no": "1.5-2", "title": "x", "ext": "pdf"},
+    {"name": "0-1_x.pdf", "key": null, "doc_no": "0-1", "title": "x", "ext": "pdf", "why": "0 は空欄"},
+    {"name": "007-1_x.pdf", "key": 7, "doc_no": "007-1", "title": "x", "ext": "pdf"},
+    {"name": "+5-1_x.pdf", "key": 5, "doc_no": "+5-1", "title": "x", "ext": "pdf"},
+    {"name": "6a-1_x.pdf", "key": 6, "doc_no": "6a-1", "title": "x", "ext": "pdf"},
+    {"name": "１２-3_x.pdf", "key": null, "doc_no": "１２-3", "title": "x", "ext": "pdf", "why": "Q12 全角数字は数字としない(未確認)"},
+    {"name": "desktop.ini", "key": null, "doc_no": "", "title": "desktop", "ext": "ini"},
+    {"name": ".gitignore", "key": null, "doc_no": "", "title": "", "ext": "gitignore"},
+    {"name": "a.b.a.b", "key": null, "doc_no": "", "title": "a.a", "ext": "b", "why": "Replace はすべて置き換える"},
+    {"name": "abc.", "key": null, "doc_no": "", "title": "abc", "ext": ""},
+    {"name": "6-1_手順書.PDF", "key": 6, "doc_no": "6-1", "title": "手順書", "ext": "PDF"},
+    {"name": "x_y", "key": null, "doc_no": "x", "title": "y", "ext": "y"},
+
+    {"name": "6-4_手順_改.pdf", "strict": "blank", "key": 6, "doc_no": "6-4", "title": "手順_改", "ext": "pdf", "why": "Q2 最初の _ で分ける"},
+    {"name": "6-4_手順__改.pdf", "strict": "blank", "key": 6, "doc_no": "6-4", "title": "手順__改", "ext": "pdf"},
+    {"name": "6-4__x.pdf", "strict": "blank", "key": 6, "doc_no": "6-4", "title": "_x", "ext": "pdf"},
+    {"name": "abc_", "strict": "error", "key": null, "doc_no": "abc", "title": "", "ext": "", "why": "Q3 止めずに空欄"}
+  ]
+}
