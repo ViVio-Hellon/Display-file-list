@@ -84,6 +84,9 @@ async function loadState() {
 }
 
 function applyBase(s) {
+  // VBA の T2 は初めから「ThisWorkbook.Path」が入っていた。直すフォルダが空なら基準フォルダを入れる
+  const renameInput = $("rename-folder");
+  if (!renameInput.value || renameInput.value === state.baseDir) renameInput.value = s.base_dir;
   state.baseDir = s.base_dir;
   const fact = $("fact-base");
   text($("fact-base-text"), s.base_dir + (s.base_dir_default ? "(アプリのフォルダ)" : ""));
@@ -278,7 +281,7 @@ async function runRename() {
     renderResult(result);
     if (result.counts.ok && !$("list-table").hidden) {
       // 名前が変わったので、出ている一覧は古い。黙って古いものを見せない
-      notice("list-notice", [["warn", "ファイル名を直したので、この一覧は古くなっています。「一覧を取る」を押し直してください。"]]);
+      notice("list-notice", [["warn", "ファイル名を直したので、この一覧は古くなっています。「ファイル名取得」を押し直してください。"]]);
     }
     const c = result.counts;
     setStatus("rename-status", `直しました: 成功 ${c.ok} 件 / 失敗 ${c.fail} 件`, c.fail ? "error" : "ok");

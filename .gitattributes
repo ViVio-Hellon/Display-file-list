@@ -2,3 +2,5 @@
 *.bat -text
 *.py text eol=lf
 *.bas -text
+*.frm -text
+*.frx binary

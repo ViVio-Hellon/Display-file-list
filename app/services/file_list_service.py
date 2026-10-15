@@ -50,7 +50,8 @@ from typing import Iterable, Optional
 from ..models.file_list import FileList, FileRow, ParsedName
 from . import vba_compat
 
-# VBA のオプションボタン(OBA〜OBHIRU)。どれも選ばなければ基準フォルダそのもの
+# VBA のオプションボタン(OBA〜OBHIRU)。どれも選ばなければ基準フォルダそのもの。
+# 2つ目はフォルダ名(VBA `Get_FileName` の strF)
 GROUPS = (
     ("A", "A班"),
     ("B", "B班"),
@@ -59,6 +60,17 @@ GROUPS = (
     ("HIRU", "日勤"),
 )
 BASE_GROUP = ("", "基準フォルダ")
+
+# フォーム(UF.frx)のボタンの表記。昼のボタンが「日勤」フォルダを指す。
+# 初期状態はどのボタンも選ばれていない(Value=0)= 基準フォルダ
+VBA_CAPTIONS = {"A": "A", "B": "B", "C": "C", "D": "D", "HIRU": "昼"}
+
+
+def group_button_label(key: str) -> str:
+    """画面のボタンの表記。フォルダ名と VBA の表記が違うときは両方出す(昼 → 日勤)。"""
+    folder = group_label(key)
+    caption = VBA_CAPTIONS.get(key, "")
+    return folder if not caption or folder.startswith(caption) else f"{caption}({folder})"
 
 # VBA `WS.Range("A1:E300").Sort`
 SORT_LIMIT_ROWS = 300

@@ -116,3 +116,24 @@ class LaunchFilesTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PortTest(unittest.TestCase):
+    def test_busy_port_is_detected_and_server_refuses_it(self):
+        import socket
+        from server import AppServer
+        from app.application import App
+        with socket.socket() as other:                     # ほかのアプリが待ち受けている
+            other.bind(("127.0.0.1", 0))
+            other.listen()
+            port = other.getsockname()[1]
+            self.assertFalse(launch_guard.is_port_free(port))
+            with self.assertRaises(OSError):
+                AppServer(App(port=port), "127.0.0.1", port)
+
+    def test_port_free_after_close(self):
+        import socket
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        self.assertTrue(launch_guard.is_port_free(port))

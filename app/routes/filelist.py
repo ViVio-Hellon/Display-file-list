@@ -10,7 +10,8 @@ log = logging_setup.get("app.filelist")
 
 
 def groups() -> list:
-    items = [{"key": k, "label": label} for k, label in file_list_service.GROUPS]
+    items = [{"key": k, "label": file_list_service.group_button_label(k)}
+             for k, _ in file_list_service.GROUPS]
     items.append({"key": file_list_service.BASE_GROUP[0],
                   "label": file_list_service.BASE_GROUP[1]})
     return items

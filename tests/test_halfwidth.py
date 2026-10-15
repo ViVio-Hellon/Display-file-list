@@ -4,12 +4,13 @@ from pathlib import Path
 
 from app.services import halfwidth
 
-VBA_SOURCE = Path(__file__).resolve().parent.parent / "vba" / "原本_ファイル名一覧取得.txt"
+# ブックから書き出したモジュールそのもの(CP932)
+VBA_SOURCE = Path(__file__).resolve().parent.parent / "vba" / "export" / "全角文字を半角文字に.bas"
 
 
 def vba_table():
     """VBA `ConvertZenkakuToHankaku` の Select Case をソースから読んで、同じ表を作る。"""
-    text = VBA_SOURCE.read_text(encoding="utf-8")
+    text = VBA_SOURCE.read_bytes().decode("cp932").replace("\r\n", "\n")
     body = text[text.index("Private Function ConvertZenkakuToHankaku"):]
     body = body[:body.index("End Function")]
     table = {}

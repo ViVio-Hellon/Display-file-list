@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+import socket
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
@@ -53,12 +55,37 @@ class _Handler(BaseHTTPRequestHandler):
         log.debug(fmt, *args)
 
 
+IS_WINDOWS = sys.platform.startswith("win")
+
+
+def prepare_socket(sock: socket.socket) -> None:
+    """待ち受けの前のソケット設定。launch_guard の空き確認も同じ設定で試す。
+
+    - Windows 以外: SO_REUSEADDR。閉じた直後の接続(TIME_WAIT)が残っていても開ける
+    - Windows: SO_REUSEADDR は**ほかのアプリが待ち受け中のポートにも重ねて開けてしまう**ので
+      使わず、SO_EXCLUSIVEADDRUSE で横取りもされないようにする
+    """
+    if IS_WINDOWS:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+    else:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+
+class _Server(ThreadingHTTPServer):
+    allow_reuse_address = False          # 標準の設定は使わず、prepare_socket で決める
+    daemon_threads = True
+
+    def server_bind(self) -> None:
+        prepare_socket(self.socket)
+        super().server_bind()
+
+
 class AppServer:
     """待ち受け1つ。`stop()` で残った接続も含めて確実に閉じる。"""
 
     def __init__(self, app, host: str, port: int) -> None:
-        self.httpd = ThreadingHTTPServer((host, port), _Handler)
-        self.httpd.daemon_threads = True
+        self.httpd = _Server((host, port), _Handler)
         self.httpd.app = app                                    # type: ignore[attr-defined]
         self.host, self.port = host, self.httpd.server_address[1]
         self._thread: Optional[threading.Thread] = None

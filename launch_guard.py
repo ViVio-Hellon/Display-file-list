@@ -187,8 +187,11 @@ def is_our_app(health: Optional[dict]) -> bool:
 
 
 def is_port_free(port: int, host: str = "127.0.0.1") -> bool:
+    """本番の待ち受けと**同じソケット設定**で開けるか試す(server.prepare_socket)。"""
+    from server import prepare_socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
+            prepare_socket(s)
             s.bind((host, port))
         except OSError:
             return False

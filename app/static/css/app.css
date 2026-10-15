@@ -90,6 +90,8 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
 .field label{font-size:var(--fs-sm);color:var(--muted)}
 .field input[type=text]{min-height:var(--hit);padding:0 10px;border:1px solid var(--field-line);
   border-radius:var(--radius-sm);background:var(--surface);font-family:var(--mono);font-size:var(--fs-sm)}
+.targets{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:minmax(0,1fr);gap:0;font-size:var(--fs-sm);color:var(--muted)}
+.targets li::before{content:"・"}
 .check{display:flex;gap:8px;align-items:center}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
 .status{font-size:var(--fs-sm);color:var(--muted);min-height:1.4em}

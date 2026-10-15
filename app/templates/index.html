@@ -37,7 +37,7 @@
       </div>
       <div id="list-notice"></div>
       <div class="scroll">
-        <div class="empty" id="list-empty">班を選んで「一覧を取る」を押すと、ここにファイルの一覧が出ます。</div>
+        <div class="empty" id="list-empty">班を選んで「ファイル名取得」を押すと、ここにファイルの一覧が出ます。</div>
         <table id="list-table" hidden>
           <thead><tr><th class="num">#</th><th>文書番号</th><th>名称</th><th>更新日時</th><th>拡張子</th></tr></thead>
           <tbody id="list-body"></tbody>
@@ -63,18 +63,18 @@
 
   <aside class="panel" aria-label="操作">
     <section class="card" aria-labelledby="h-list">
-      <h2 id="h-list"><span class="n">1</span>一覧を取る</h2>
+      <h2 id="h-list"><span class="n">1</span>ファイル名取得</h2>
       <div class="groups" id="groups" role="radiogroup" aria-label="班"></div>
       <div class="row">
-        <button type="button" class="btn run wide" id="btn-list">一覧を取る</button>
-        <button type="button" class="btn print" id="btn-print" disabled>印刷 / PDF</button>
+        <button type="button" class="btn run wide" id="btn-list">ファイル名取得</button>
+        <button type="button" class="btn print" id="btn-print" disabled>PDF作成 / 印刷</button>
       </div>
-      <p class="help">印刷 / PDF は別の窓で開きます。PDF にするときは印刷先で「PDF として保存」を選びます。</p>
+      <p class="help">どの班も選ばなければ基準フォルダの一覧です。「PDF作成 / 印刷」は別の窓で開き、印刷先で「PDF として保存」を選ぶと PDF になります。</p>
       <div class="status" id="list-status" aria-live="polite"></div>
     </section>
 
     <section class="card" aria-labelledby="h-rename">
-      <h2 id="h-rename"><span class="n">2</span>ファイル名を全角→半角に直す</h2>
+      <h2 id="h-rename"><span class="n">2</span>ファイル名変換(全角を半角に)</h2>
       <div class="field">
         <label for="rename-folder">直すフォルダ</label>
         <input type="text" id="rename-folder" autocomplete="off" spellcheck="false" placeholder="C:\… または \\サーバ\…">
@@ -84,8 +84,12 @@
         <button type="button" class="btn small" id="btn-rename-group">選んだ班のフォルダを入れる</button>
         <button type="button" class="btn small" id="btn-rename-browse">参照…</button>
       </div>
-      <label class="check"><input type="checkbox" id="rename-folders">直下のフォルダ名も直す</label>
-      <p class="help">英数字・記号(！〜～)と全角の空白だけを半角にします。カタカナや「〜」は変えません。同じ名前があれば「_1」「_2」…を付けます。</p>
+      <label class="check"><input type="checkbox" id="rename-folders">フォルダも対象(直下のフォルダ名も直す)</label>
+      <ul class="targets" aria-label="変換対象の文字">
+        <li>全角数字 → 半角数字</li><li>全角英字 → 半角英字</li>
+        <li>全角記号 → 半角記号</li><li>全角スペース → 半角スペース</li>
+      </ul>
+      <p class="help">カタカナや「〜」は変えません。同じ名前があれば「_1」「_2」…を付けます。</p>
       <div class="row">
         <button type="button" class="btn run wide" id="btn-preview">変わる名前を見る</button>
       </div>
