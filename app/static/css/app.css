@@ -73,7 +73,6 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
 .btn:hover{filter:brightness(.97)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.run{background:var(--act-run);color:var(--act-run-fg);border-color:var(--act-run)}
-.btn.print{background:var(--act-print);color:var(--act-print-fg);border-color:var(--act-print)}
 .btn.commit{background:var(--act-commit);color:var(--act-commit-fg);border-color:var(--act-commit)}
 .btn.wide{flex:1}
 .btn.small{min-height:30px;padding:0 10px;font-weight:400}

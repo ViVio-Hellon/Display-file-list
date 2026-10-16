@@ -45,8 +45,8 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/api/state", token="")[0], 403)
         self.assertEqual(self.call("GET", "/api/state", token="wrong")[0], 403)
         self.assertEqual(self.call("GET", "/api/state", token="ü")[0], 403)
-        self.assertEqual(self.call("GET", f"/print?folder={self.q(self.base)}", token="")[0], 403)
-        self.assertEqual(self.call("GET", f"/print?folder={self.q(self.base)}&t=T", token="")[0], 200)
+        # ファイル名一覧の PDF(/print)は VER1.4.0 でなくした
+        self.assertEqual(self.call("GET", f"/print?folder={self.q(self.base)}")[0], 404)
         self.assertEqual(self.call("GET", "/api/health", token="")[0], 200)
 
     def test_cross_site_refused(self):
@@ -99,18 +99,6 @@ class WebTest(unittest.TestCase):
         self.assertEqual((status, data["error"]["code"]), (422, "folder_relative"))
         status, data = self.call("GET", "/api/filelist?folder=")
         self.assertEqual((status, data["error"]["code"]), (422, "folder_empty"))
-
-    def test_print(self):
-        (self.base / "1-1_あ.pdf").write_text("x", encoding="utf-8")
-        status, body = self.call("GET", f"/print?folder={self.q(self.base)}")
-        self.assertEqual(status, 200)
-        text = body.decode("utf-8")
-        self.assertIn("<td>1-1</td><td>あ</td>", text)
-        self.assertIn("A4 portrait", text)
-        self.assertIn(f"{self.base.name} 一覧", text)
-        status, body = self.call("GET", f"/print?folder={self.q(self.base / 'C班')}")
-        self.assertEqual(status, 422)
-        self.assertIn("印刷できません", body.decode("utf-8"))
 
     # --- リネーム ------------------------------------------------------
     def test_rename_preview_then_run(self):

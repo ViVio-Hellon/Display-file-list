@@ -180,7 +180,6 @@ def where_in_code(frames: Sequence[tuple], roots: Sequence[str]) -> str:
 ACTION_LABELS = {
     ("GET", "/"): "画面を開いた",
     ("GET", "/logs"): "ログを開いた",
-    ("GET", "/print"): "PDF作成 / 印刷を開いた",
     ("GET", "/api/filelist"): "ファイル名取得",
     ("POST", "/api/rename/preview"): "ファイル名変換: 変わる名前を見る",
     ("POST", "/api/rename/run"): "ファイル名変換: この内容で直す",
@@ -191,7 +190,7 @@ ACTION_LABELS = {
 }
 
 #: 開いた画面として**ちょうど**その道のときだけ当てるもの(頭で当てると `/` がすべてに当たる)
-_EXACT = ("/", "/logs", "/print")
+_EXACT = ("/", "/logs")
 
 
 def label_of(method: str, path: str) -> str:

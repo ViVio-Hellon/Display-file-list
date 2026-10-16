@@ -2,7 +2,7 @@
   画面の操作。**判断はすべてサーバ**(一覧の分け方・並べ替え・リネームの可否)。
   ここは返ってきたものを表に写すだけ。
 */
-import { ApiError, get, post, token } from "./api.js";
+import { ApiError, get, post } from "./api.js";
 import { startHeartbeat } from "./health.js";
 import { startErrorReport } from "./errors.js";
 import { showLogCount } from "./logcount.js";
@@ -91,9 +91,7 @@ async function loadList() {
     state.listFolder = data.folder;
     renderList(data);
     setStatus("list-status", `${data.count} 件を読みました(${data.fetched_at})。`, "ok");
-    $("btn-print").disabled = false;
   } catch (e) {
-    $("btn-print").disabled = true;
     $("list-table").hidden = true;
     $("list-head").hidden = true;
     $("list-empty").hidden = false;
@@ -135,12 +133,6 @@ function renderList(data) {
   if (data.count === 0) text($("list-empty"), "このフォルダにファイルはありません。");
 }
 
-function openPrint() {
-  // 印刷するのは画面に出ている一覧のフォルダ(入力欄をあとで書き換えていても)
-  const url = "/print?folder=" + encodeURIComponent(state.listFolder) + "&t=" + encodeURIComponent(token());
-  const w = window.open(url, "_blank");
-  if (!w) toast("別の窓を開けませんでした。ブラウザのポップアップの設定を確かめてください。");
-}
 
 // ------------------------------------------------------------------
 // 2. 全角→半角
@@ -305,8 +297,6 @@ function wire() {
   $("tab-list").onclick = () => showTab("list");
   $("tab-rename").onclick = () => showTab("rename");
   $("btn-list").onclick = loadList;
-  $("btn-print").onclick = openPrint;
-  $("list-folder").addEventListener("input", () => { $("btn-print").disabled = true; });
   $("list-folder").addEventListener("keydown", (ev) => { if (ev.key === "Enter") loadList(); });
   $("btn-preview").onclick = preview;
   $("btn-run").onclick = runRename;

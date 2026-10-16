@@ -5,7 +5,7 @@
 | 対策 | 内容 |
 |---|---|
 | バインド先 | 127.0.0.1 のみ(server.py) |
-| 起動トークン | 起動ごとに作る。`/api/*` と `/print` に必須(ヘッダ `X-Tool-Token` か `?t=`) |
+| 起動トークン | 起動ごとに作る。`/api/*` に必須(ヘッダ `X-Tool-Token`) |
 | Host 検証 | `127.0.0.1:<port>` / `localhost:<port>` 以外は 400(DNS リバインディング対策) |
 | 同一オリジン | `Sec-Fetch-Site` が same-origin / none 以外なら 403。CORS ヘッダは返さない |
 
@@ -32,7 +32,7 @@ log = logging_setup.get("server.app")
 
 APP_DIR = Path(__file__).resolve().parent
 
-TOKEN_REQUIRED_PREFIXES = ("/api/", "/print")
+TOKEN_REQUIRED_PREFIXES = ("/api/",)
 TOKEN_EXEMPT_PATHS = frozenset({"/api/health", "/api/alive", "/api/bye"})
 # 錠を取らない POST。止める・心拍は、長いリネームの最中でも届く必要がある
 LOCK_EXEMPT_PATHS = frozenset({"/api/alive", "/api/bye", "/api/shutdown", "/api/log/client"})
