@@ -96,4 +96,26 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
   .work{grid-template-columns:minmax(0,1fr);overflow:auto}
   .result{min-height:60vh}
 }
-@media print{.bar,.panel,.tabs,.offline{display:none}}
+/* 印刷(VER1.6.0): 画面ではなく紙面(#print-sheet)だけを出す。A4 縦・見出し行は各ページ */
+.print-sheet{display:none}
+@media print{
+  @page{size:A4 portrait;margin:10mm 8mm 12mm;
+    @bottom-right{content:counter(page) " / " counter(pages);font-size:8pt;color:#555}}
+  html,body{height:auto;background:#fff;color:#000;display:block}
+  body>*:not(.print-sheet){display:none!important}
+  .print-sheet{display:block;font-size:9pt;line-height:1.35}
+  .print-sheet h1{font-size:13pt;margin:0 0 2mm}
+  .print-sheet .p-meta{margin:0 0 2mm;color:#333;overflow-wrap:anywhere}
+  .print-sheet .p-warn{margin:0 0 2mm;font-weight:700}
+  .print-sheet table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9pt}
+  .print-sheet thead{display:table-header-group}
+  .print-sheet tr{break-inside:avoid}
+  .print-sheet th,.print-sheet td{border:0.5pt solid #777;padding:1mm 1.5mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+  .print-sheet tbody tr:hover{background:none}
+  .print-sheet thead th{position:static;color:#000;font-size:9pt;white-space:normal}
+  .print-sheet th{background:#eee;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-sheet td.p-date{white-space:nowrap}
+  .print-sheet .p-note{display:block;font-size:7.5pt;color:#444}
+  .print-sheet col.c-no{width:22%}.print-sheet col.c-title{width:50%}
+  .print-sheet col.c-date{width:18%}.print-sheet col.c-ext{width:10%}
+}

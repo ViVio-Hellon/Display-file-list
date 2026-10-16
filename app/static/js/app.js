@@ -6,10 +6,11 @@ import { ApiError, get, post } from "./api.js";
 import { startHeartbeat } from "./health.js";
 import { startErrorReport } from "./errors.js";
 import { copyRows } from "./copytable.js";
+import { fillPrintSheet } from "./printsheet.js";
 import { showLogCount } from "./logcount.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { listFolder: "", listRows: [], plan: null, planKey: "" };
+const state = { listFolder: "", listRows: [], list: null, listStale: false, plan: null, planKey: "" };
 
 function text(el, value) { el.textContent = value == null ? "" : String(value); }
 
@@ -91,8 +92,11 @@ async function loadList() {
     const data = await get("/api/filelist?folder=" + encodeURIComponent($("list-folder").value));
     state.listFolder = data.folder;
     state.listRows = data.rows;
+    state.list = data;
+    state.listStale = false;
     renderList(data);
     $("btn-copy").disabled = data.count === 0;
+    $("btn-print").disabled = data.count === 0;
     setStatus("list-status", `${data.count} 件を読みました(${data.fetched_at})。`, "ok");
   } catch (e) {
     $("list-table").hidden = true;
@@ -100,7 +104,10 @@ async function loadList() {
     $("list-empty").hidden = false;
     state.listFolder = "";
     state.listRows = [];
+    state.list = null;
+    state.listStale = false;
     $("btn-copy").disabled = true;
+    $("btn-print").disabled = true;
     text($("list-empty"), failText(e));
     notice("list-notice", []);
     setStatus("list-status", errorText(e), "error");
@@ -246,7 +253,8 @@ async function runRename() {
     clearPlan();
     renderResult(result);
     if (result.counts.ok && !$("list-table").hidden) {
-      // 名前が変わったので、出ている一覧は古い。黙って古いものを見せない
+      // 名前が変わったので、出ている一覧は古い。黙って古いものを見せない(印刷にも書く)
+      state.listStale = true;
       notice("list-notice", [["warn", "ファイル名を直したので、この一覧は古くなっています。「ファイル名取得」を押し直してください。"]]);
     }
     const c = result.counts;
@@ -310,11 +318,26 @@ async function copyList() {
   }
 }
 
+function fillPrint() {
+  fillPrintSheet($("print-sheet"), state.list, { stale: state.listStale });
+}
+
+function printList() {
+  // 画面に出ている一覧そのもの(取り直さない)。並びも画面と同じ
+  if (!state.listRows.length) return;
+  fillPrint();
+  window.print();
+  setStatus("list-status", `${state.listRows.length} 件の一覧を印刷に回しました。`, "ok");
+}
+
 function wire() {
   $("tab-list").onclick = () => showTab("list");
   $("tab-rename").onclick = () => showTab("rename");
   $("btn-list").onclick = loadList;
   $("btn-copy").onclick = copyList;
+  $("btn-print").onclick = printList;
+  // Ctrl+P で印刷しても同じ紙面に(一覧が無ければ理由を印刷する。真っ白な紙にしない)
+  window.addEventListener("beforeprint", fillPrint);
   $("list-folder").addEventListener("keydown", (ev) => { if (ev.key === "Enter") loadList(); });
   $("btn-preview").onclick = preview;
   $("btn-run").onclick = runRename;

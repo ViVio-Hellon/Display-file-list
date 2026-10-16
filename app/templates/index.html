@@ -70,9 +70,12 @@
       </div>
       <div class="row">
         <button type="button" class="btn run wide" id="btn-list">ファイル名取得</button>
-        <button type="button" class="btn copy" id="btn-copy" disabled title="表示中の一覧をコピーします。Excel に貼ると列に分かれます">一覧をコピー</button>
       </div>
-      <p class="help">パスはエクスプローラーのアドレス欄からコピーして貼り付けられます(「パスのコピー」で付く " はそのままで大丈夫です)。「一覧をコピー」で表示中の一覧をコピーでき、Excel に貼ると 文書番号・名称・更新日時・拡張子 の列に分かれます(見出し行つき。6-1 などが日付に変わらないよう文字のまま貼られます)。</p>
+      <div class="row">
+        <button type="button" class="btn copy wide" id="btn-copy" disabled title="表示中の一覧をコピーします。Excel に貼ると列に分かれます">一覧をコピー</button>
+        <button type="button" class="btn copy wide" id="btn-print" disabled title="表示中の一覧を印刷します(A4 縦)">一覧を印刷</button>
+      </div>
+      <p class="help">パスはエクスプローラーのアドレス欄からコピーして貼り付けられます(「パスのコピー」で付く " はそのままで大丈夫です)。「一覧をコピー」で表示中の一覧をコピーでき、Excel に貼ると 文書番号・名称・更新日時・拡張子 の列に分かれます(見出し行つき。6-1 などが日付に変わらないよう文字のまま貼られます)。「一覧を印刷」は表示中の一覧を A4 縦で印刷します(見出し行は各ページに付きます)。</p>
       <div class="status" id="list-status" aria-live="polite"></div>
     </section>
 
@@ -100,6 +103,8 @@
 </div>
 
 <div class="toast" id="toast" hidden role="status"></div>
+<!-- 印刷用の紙面。画面には出さず、印刷のときだけこれを出す(app.css の @media print) -->
+<section class="print-sheet" id="print-sheet" aria-hidden="true"></section>
 
 <script type="module" src="/static/js/app.js?v={{VERSION}}"></script>
 </body>

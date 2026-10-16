@@ -45,7 +45,7 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/api/state", token="")[0], 403)
         self.assertEqual(self.call("GET", "/api/state", token="wrong")[0], 403)
         self.assertEqual(self.call("GET", "/api/state", token="ü")[0], 403)
-        # ファイル名一覧の PDF(/print)は VER1.4.0 でなくした
+        # /print は VER1.4.0 でなくした。VER1.6.0 の印刷は画面の中で紙面を作る(サーバの経路は要らない)
         self.assertEqual(self.call("GET", f"/print?folder={self.q(self.base)}")[0], 404)
         self.assertEqual(self.call("GET", "/api/health", token="")[0], 200)
 
