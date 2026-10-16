@@ -18,11 +18,8 @@ from __future__ import annotations
 import json
 import os
 import socket
-import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
@@ -31,7 +28,6 @@ from app.core import config, logging_setup
 
 log = logging_setup.get("launcher.guard")
 
-HEALTH_TIMEOUT_SEC = 1.5
 STARTING_PORT = 0
 STARTING_WAIT_SEC = 15.0
 
@@ -116,70 +112,11 @@ def build_lock_info(port: int, token: str = "") -> LockInfo:
 # ------------------------------------------------------------------
 # プロセス
 # ------------------------------------------------------------------
-def is_process_alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    if sys.platform.startswith("win"):
-        import ctypes
-        kernel32 = ctypes.windll.kernel32                     # type: ignore[attr-defined]
-        handle = kernel32.OpenProcess(0x1000, False, pid)     # PROCESS_QUERY_LIMITED_INFORMATION
-        if not handle:
-            return False
-        try:
-            code = ctypes.c_ulong()
-            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
-                return False
-            return code.value == 259                          # STILL_ACTIVE
-        finally:
-            kernel32.CloseHandle(handle)
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
-def process_command_line(pid: int) -> str:
-    """そのプロセスの起動コマンド。取れなければ空文字。"""
-    if sys.platform.startswith("win"):
-        try:
-            out = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 f"(Get-CimInstance Win32_Process -Filter 'ProcessId={int(pid)}').CommandLine"],
-                capture_output=True, text=True, timeout=10,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            return out.stdout.strip()
-        except (OSError, subprocess.SubprocessError):
-            return ""
-    try:
-        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
-        return raw.replace(b"\0", b" ").decode("utf-8", "replace").strip()
-    except OSError:
-        return ""
-
-
-# ------------------------------------------------------------------
-# HTTP(プロキシを通さない)
-# ------------------------------------------------------------------
-_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-
-
-def local_request(url: str, *, timeout: float, data: Optional[bytes] = None,
-                  headers: Optional[dict] = None, method: Optional[str] = None):
-    """社内PCのプロキシ設定に 127.0.0.1 の除外が無くても、自分自身へ届くようにする。"""
-    req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
-    req.add_header("Host", url.split("/")[2])
-    return _OPENER.open(req, timeout=timeout)
-
-
-def probe_health(port: int, *, timeout: float = HEALTH_TIMEOUT_SEC) -> Optional[dict]:
-    try:
-        with local_request(f"http://127.0.0.1:{port}/api/health", timeout=timeout) as res:
-            return json.loads(res.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError):
-        return None
+# プロセスの道具(生きているか・起動コマンド・プロキシを通さない要求・応答の確認)は
+# **process_manager.py の1か所に置く。** 止める入口は、ほかの部品が欠けていても
+# 動かす必要があるので、標準ライブラリだけで書いてあちらに持たせている
+from process_manager import (is_process_alive, local_request,  # noqa: E402,F401
+                             probe_health, process_command_line)
 
 
 def is_our_app(health: Optional[dict]) -> bool:

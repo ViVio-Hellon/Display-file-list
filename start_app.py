@@ -69,6 +69,33 @@ def _notify(message: str, title: str = "ファイル名一覧取得") -> None:
             pass
 
 
+# このフォルダに無ければ動かない部品。**app を読む前に**確かめる(読もうとして落ちると、
+# コンソールの無い起動では何も出ずに終わる)。all-tools で、消しかけのフォルダから
+# 起動して「No module named 'nippou.services'」になったのと同じことを、名指しで言う
+REQUIRED_PARTS = ("app/__init__.py", "app/application.py", "app/web.py", "app/core",
+                  "app/routes", "app/services", "app/repositories", "app/models",
+                  "app/templates/index.html", "app/templates/logs.html", "app/static",
+                  "config/app.json", "loading.html", "launch_guard.py", "server.py",
+                  "process_manager.py")
+
+
+def missing_parts() -> list:
+    here = os.path.dirname(os.path.abspath(__file__))
+    return [part for part in REQUIRED_PARTS if not os.path.exists(os.path.join(here, *part.split("/")))]
+
+
+def _fatal(message: str, detail: str = "") -> int:
+    """起動できない理由を、画面(またはコンソール)と launcher.log の両方へ。"""
+    try:
+        from process_manager import local_root, write_launcher_log
+        write_launcher_log(message + (("\n" + detail) if detail else ""), "launcher.start", "ERROR")
+        where = local_root() / "logs" / "launcher.log"
+    except Exception:                                      # noqa: BLE001 - 止める入口まで欠けている
+        where = "%LOCALAPPDATA%\\FileListTool\\logs\\launcher.log"
+    _notify(f"{message}\n\nログ: {where}")
+    return 1
+
+
 def check_environment() -> list:
     """(項目, 良し悪し, 中身) の一覧。"""
     from app.core import config
@@ -110,9 +137,26 @@ def main(argv=None) -> int:
         _notify(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} 以上が要ります(いま {sys.version.split()[0]})。")
         return 1
 
-    from app.core import config, event_log, logging_setup
-    logging_setup.setup(console=_console_available())
-    event_log.install()
+    lacking = missing_parts()
+    if lacking:
+        here = os.path.dirname(os.path.abspath(__file__))
+        return _fatal("このフォルダの部品が足りないので起動できません:\n  "
+                      + "\n  ".join(lacking)
+                      + f"\n\nフォルダ: {here}\n"
+                      "フォルダの一部が消えた・コピーが途中で止まった、などが考えられます。"
+                      "配布フォルダを丸ごと入れ直してください。")
+    try:
+        from app.core import config, event_log, logging_setup
+        # 設定は**ここで**読んで確かめる(壊れていると、あとで読んだところで黙って落ちる)
+        for read in (config.app_id, config.version, config.display_name, config.base_port):
+            read()
+        logging_setup.setup(console=_console_available())
+        event_log.install()
+    except Exception as exc:                               # noqa: BLE001
+        import traceback
+        return _fatal(f"起動の準備ができませんでした({type(exc).__name__}: {exc})。"
+                      "設定ファイル(config\\app.json)が壊れていないか確かめてください。",
+                      traceback.format_exc())
     log = logging_setup.get("launcher.start")
     t0 = time.time()
     log.info("起動: 版 %s / Python %s (%s) / 置き場所 %s / pid %s",
@@ -149,6 +193,11 @@ def main(argv=None) -> int:
 
     try:
         return _serve(args, log, t0)
+    except Exception as exc:                               # noqa: BLE001 - 理由を言わずに消えない
+        log.exception("起動の途中で止まりました")
+        import traceback
+        return _fatal(f"起動の途中で止まりました({type(exc).__name__}: {exc})。"
+                      "配布フォルダを丸ごと入れ直すと直ることがあります。", traceback.format_exc())
     finally:
         launch_guard.remove_lock(pid=os.getpid())
 

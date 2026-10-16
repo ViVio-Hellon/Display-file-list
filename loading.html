@@ -74,6 +74,14 @@ li.now{color:var(--ink);font-weight:700} li.now::before{content:"▶"}
     });
   }
   poll();
+  // 心拍。**起動に失敗して理由を出しているあいだも**送る。この画面を閉じれば
+  // アプリは少しして自分で終わる(閉じたあとも Python が残り続けないように)
+  function beat() { fetch("/api/alive", { method: "POST" }).catch(function () {}); }
+  beat();
+  setInterval(beat, {{HEARTBEAT}} * 1000);
+  window.addEventListener("pagehide", function () {
+    try { navigator.sendBeacon("/api/bye", new Blob(["{}"], { type: "application/json" })); } catch (e) {}
+  });
 })();
 </script>
 </body>
