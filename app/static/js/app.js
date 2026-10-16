@@ -5,10 +5,11 @@
 import { ApiError, get, post } from "./api.js";
 import { startHeartbeat } from "./health.js";
 import { startErrorReport } from "./errors.js";
+import { copyRows } from "./copytable.js";
 import { showLogCount } from "./logcount.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { listFolder: "", plan: null, planKey: "" };
+const state = { listFolder: "", listRows: [], plan: null, planKey: "" };
 
 function text(el, value) { el.textContent = value == null ? "" : String(value); }
 
@@ -89,13 +90,17 @@ async function loadList() {
   try {
     const data = await get("/api/filelist?folder=" + encodeURIComponent($("list-folder").value));
     state.listFolder = data.folder;
+    state.listRows = data.rows;
     renderList(data);
+    $("btn-copy").disabled = data.count === 0;
     setStatus("list-status", `${data.count} 件を読みました(${data.fetched_at})。`, "ok");
   } catch (e) {
     $("list-table").hidden = true;
     $("list-head").hidden = true;
     $("list-empty").hidden = false;
     state.listFolder = "";
+    state.listRows = [];
+    $("btn-copy").disabled = true;
     text($("list-empty"), failText(e));
     notice("list-notice", []);
     setStatus("list-status", errorText(e), "error");
@@ -293,10 +298,23 @@ async function exitApp() {
   }
 }
 
+async function copyList() {
+  // 画面に出ている一覧そのもの(取り直さない)。並びも画面と同じ
+  const rows = state.listRows;
+  if (!rows.length) return;
+  if (await copyRows(rows)) {
+    setStatus("list-status", `${rows.length} 件をコピーしました。Excel に貼ると列に分かれます。`, "ok");
+    toast(`一覧 ${rows.length} 件をコピーしました`);
+  } else {
+    setStatus("list-status", "コピーできませんでした。一覧を選んで Ctrl+C でコピーしてください。", "error");
+  }
+}
+
 function wire() {
   $("tab-list").onclick = () => showTab("list");
   $("tab-rename").onclick = () => showTab("rename");
   $("btn-list").onclick = loadList;
+  $("btn-copy").onclick = copyList;
   $("list-folder").addEventListener("keydown", (ev) => { if (ev.key === "Enter") loadList(); });
   $("btn-preview").onclick = preview;
   $("btn-run").onclick = runRename;
