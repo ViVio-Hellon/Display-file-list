@@ -49,7 +49,7 @@ class ValTest(unittest.TestCase):
         self.assertEqual(val("&O8"), 0)
 
     def test_fullwidth_digits_are_not_digits(self):
-        # 移植計画 Q12: 実機で確かめるまでは数字として扱わない
+        # 移植計画 Q12: 全角数字は文字列。数字として扱わない(2026-10-16 決定)
         self.assertEqual(val("１２"), 0)
 
 

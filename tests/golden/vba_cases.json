@@ -21,7 +21,7 @@
     {"name": "007-1_x.pdf", "key": 7, "doc_no": "007-1", "title": "x", "ext": "pdf"},
     {"name": "+5-1_x.pdf", "key": 5, "doc_no": "+5-1", "title": "x", "ext": "pdf"},
     {"name": "6a-1_x.pdf", "key": 6, "doc_no": "6a-1", "title": "x", "ext": "pdf"},
-    {"name": "１２-3_x.pdf", "key": null, "doc_no": "１２-3", "title": "x", "ext": "pdf", "why": "Q12 全角数字は数字としない(未確認)"},
+    {"name": "１２-3_x.pdf", "key": null, "doc_no": "１２-3", "title": "x", "ext": "pdf", "why": "Q12 全角数字は文字列。数字としない(2026-10-16 決定)"},
     {"name": "desktop.ini", "key": null, "doc_no": "", "title": "desktop", "ext": "ini"},
     {"name": ".gitignore", "key": null, "doc_no": "", "title": "", "ext": "gitignore"},
     {"name": "a.b.a.b", "key": null, "doc_no": "", "title": "a.a", "ext": "b", "why": "Replace はすべて置き換える"},
