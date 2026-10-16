@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 
 from app.application import App
-from app.repositories import settings_repository
 from app.web import Request
 
 PORT = 18753
@@ -16,14 +15,16 @@ class WebTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.base = Path(self.tmp.name)
-        settings_repository.save(settings_repository.KEY_BASE_DIR, str(self.base))
         self.stopped = []
         self.app = App(port=PORT, token="T", on_shutdown=lambda: self.stopped.append(True))
         self.app.state.ready = True
 
     def tearDown(self):
-        settings_repository.save(settings_repository.KEY_BASE_DIR, "")
         self.tmp.cleanup()
+
+    def q(self, path):
+        from urllib.parse import quote
+        return quote(str(path))
 
     def call(self, method, path, body=None, *, token="T", host=HOST, headers=None):
         h = {"Host": host}
@@ -44,8 +45,8 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/api/state", token="")[0], 403)
         self.assertEqual(self.call("GET", "/api/state", token="wrong")[0], 403)
         self.assertEqual(self.call("GET", "/api/state", token="ü")[0], 403)
-        self.assertEqual(self.call("GET", "/print?group=", token="")[0], 403)
-        self.assertEqual(self.call("GET", "/print?group=&t=T", token="")[0], 200)
+        self.assertEqual(self.call("GET", f"/print?folder={self.q(self.base)}", token="")[0], 403)
+        self.assertEqual(self.call("GET", f"/print?folder={self.q(self.base)}&t=T", token="")[0], 200)
         self.assertEqual(self.call("GET", "/api/health", token="")[0], 200)
 
     def test_cross_site_refused(self):
@@ -77,35 +78,44 @@ class WebTest(unittest.TestCase):
     def test_filelist(self):
         (self.base / "A班").mkdir()
         (self.base / "A班" / "6-1_手順.pdf").write_text("x", encoding="utf-8")
-        status, data = self.call("GET", "/api/filelist?group=A")
+        # 「パスのコピー」で付く " があっても読める
+        status, data = self.call("GET", "/api/filelist?folder=" + self.q(f'"{self.base / "A班"}"'))
         self.assertEqual(status, 200)
-        self.assertEqual(data["group_label"], "A班")
+        self.assertEqual((data["title"], data["folder"]), ("A班", str(self.base / "A班")))
         self.assertEqual([(r["doc_no"], r["title"], r["ext"]) for r in data["rows"]],
                          [("6-1", "手順", "pdf")])
+        # 使えたパスを覚えて、次に開いたときに入れる
+        _, state = self.call("GET", "/api/state")
+        self.assertEqual(state["list_dir"], str(self.base / "A班"))
 
     def test_filelist_missing_folder(self):
-        status, data = self.call("GET", "/api/filelist?group=B")
+        status, data = self.call("GET", "/api/filelist?folder=" + self.q(self.base / "B班"))
         self.assertEqual(status, 422)
         self.assertEqual(data["error"]["message"], "指定のフォルダは存在しません。")
+        self.assertEqual(data["folder"], str(self.base / "B班"))
 
-    def test_filelist_bad_group(self):
-        self.assertEqual(self.call("GET", "/api/filelist?group=Z")[0], 400)
+    def test_filelist_relative_and_empty(self):
+        status, data = self.call("GET", "/api/filelist?folder=A%E7%8F%AD")
+        self.assertEqual((status, data["error"]["code"]), (422, "folder_relative"))
+        status, data = self.call("GET", "/api/filelist?folder=")
+        self.assertEqual((status, data["error"]["code"]), (422, "folder_empty"))
 
     def test_print(self):
         (self.base / "1-1_あ.pdf").write_text("x", encoding="utf-8")
-        status, body = self.call("GET", "/print?group=")
+        status, body = self.call("GET", f"/print?folder={self.q(self.base)}")
         self.assertEqual(status, 200)
         text = body.decode("utf-8")
         self.assertIn("<td>1-1</td><td>あ</td>", text)
         self.assertIn("A4 portrait", text)
-        status, body = self.call("GET", "/print?group=C")
+        self.assertIn(f"{self.base.name} 一覧", text)
+        status, body = self.call("GET", f"/print?folder={self.q(self.base / 'C班')}")
         self.assertEqual(status, 422)
         self.assertIn("印刷できません", body.decode("utf-8"))
 
     # --- リネーム ------------------------------------------------------
     def test_rename_preview_then_run(self):
         (self.base / "Ａ.txt").write_text("x", encoding="utf-8")
-        req = {"folder": "ThisWorkbook.Path", "rename_folders": False}
+        req = {"folder": f'"{self.base}"', "rename_folders": False}
         status, plan = self.call("POST", "/api/rename/preview", req)
         self.assertEqual(status, 200)
         self.assertTrue((self.base / "Ａ.txt").exists())
@@ -128,30 +138,19 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.call("POST", "/api/rename/preview",
                                    {"folder": " ", "rename_folders": False})[0], 422)
         self.assertEqual(self.call("POST", "/api/rename/preview",
-                                   {"folder": "無いフォルダ", "rename_folders": False})[0], 422)
+                                   {"folder": str(self.base / "無い"), "rename_folders": False})[0], 422)
+        self.assertEqual(self.call("POST", "/api/rename/preview",
+                                   {"folder": "ThisWorkbook.Path", "rename_folders": False})[0], 422)
         self.assertEqual(self.call("POST", "/api/rename/preview",
                                    {"folder": str(self.base), "rename_folders": "yes"})[0], 400)
         self.assertEqual(self.call("POST", "/api/rename/run",
                                    {"folder": str(self.base), "rename_folders": False,
                                     "plan_id": ""})[0], 400)
 
-    # --- 設定 ----------------------------------------------------------
-    def test_settings(self):
-        status, data = self.call("POST", "/api/settings", {"base_dir": "relative"})
-        self.assertEqual(status, 422)
-        status, data = self.call("POST", "/api/settings", {"base_dir": str(self.base / "無い")})
-        self.assertEqual(status, 422)
-        status, data = self.call("POST", "/api/settings", {"base_dir": str(self.base)})
-        self.assertEqual((status, data["base_dir"], data["base_dir_ok"]), (200, str(self.base), True))
-        status, data = self.call("POST", "/api/settings", {"base_dir": ""})
-        self.assertTrue(data["base_dir_default"])
-
-    def test_fs_list_returns_folder_names_only(self):
-        (self.base / "A班").mkdir()
-        (self.base / "secret.txt").write_text("x", encoding="utf-8")
-        _, data = self.call("GET", "/api/fs/list?path=" + str(self.base))
-        self.assertEqual([d["name"] for d in data["dirs"]], ["A班"])
-        self.assertNotIn("secret", json.dumps(data))
+    def test_removed_endpoints(self):
+        # VER1.2.0 で基準フォルダの設定とフォルダ参照をなくした
+        self.assertEqual(self.call("POST", "/api/settings", {"base_dir": ""})[0], 404)
+        self.assertEqual(self.call("GET", "/api/fs/list?path=/")[0], 404)
 
     # --- 停止 ----------------------------------------------------------
     def test_shutdown_refused_while_busy(self):
@@ -165,7 +164,7 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.call("POST", "/api/shutdown", {}, token="")[0], 403)
 
     def test_bad_json(self):
-        resp = self.app.handle(Request.build("POST", "/api/settings",
+        resp = self.app.handle(Request.build("POST", "/api/rename/preview",
                                              {"Host": HOST, "X-Tool-Token": "T"}, b"{oops"))
         self.assertEqual(resp.status, 400)
 

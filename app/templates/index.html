@@ -13,9 +13,6 @@
 <body>
 <header class="bar">
   <h1>{{APP_NAME}}</h1><span class="ver">VER{{VERSION}}</span>
-  <div class="facts">
-    <span class="fact" id="fact-base"><b>基準フォルダ</b><span id="fact-base-text">読み込み中…</span></span>
-  </div>
   <button type="button" class="end" id="btn-exit">終了</button>
 </header>
 <div class="offline" id="offline" hidden role="alert">
@@ -37,7 +34,7 @@
       </div>
       <div id="list-notice"></div>
       <div class="scroll">
-        <div class="empty" id="list-empty">班を選んで「ファイル名取得」を押すと、ここにファイルの一覧が出ます。</div>
+        <div class="empty" id="list-empty">フォルダのパスを入れて「ファイル名取得」を押すと、ここにファイルの一覧が出ます。</div>
         <table id="list-table" hidden>
           <thead><tr><th class="num">#</th><th>文書番号</th><th>名称</th><th>更新日時</th><th>拡張子</th></tr></thead>
           <tbody id="list-body"></tbody>
@@ -64,25 +61,23 @@
   <aside class="panel" aria-label="操作">
     <section class="card" aria-labelledby="h-list">
       <h2 id="h-list"><span class="n">1</span>ファイル名取得</h2>
-      <div class="groups" id="groups" role="radiogroup" aria-label="班"></div>
+      <div class="field">
+        <label for="list-folder">フォルダのパス</label>
+        <input type="text" id="list-folder" autocomplete="off" spellcheck="false" placeholder="C:\… または \\サーバ\…">
+      </div>
       <div class="row">
         <button type="button" class="btn run wide" id="btn-list">ファイル名取得</button>
         <button type="button" class="btn print" id="btn-print" disabled>PDF作成 / 印刷</button>
       </div>
-      <p class="help">どの班も選ばなければ基準フォルダの一覧です。「PDF作成 / 印刷」は別の窓で開き、印刷先で「PDF として保存」を選ぶと PDF になります。</p>
+      <p class="help">パスはエクスプローラーのアドレス欄からコピーして貼り付けられます(「パスのコピー」で付く " はそのままで大丈夫です)。「PDF作成 / 印刷」は別の窓で開き、印刷先で「PDF として保存」を選ぶと PDF になります。</p>
       <div class="status" id="list-status" aria-live="polite"></div>
     </section>
 
     <section class="card" aria-labelledby="h-rename">
       <h2 id="h-rename"><span class="n">2</span>ファイル名変換(全角を半角に)</h2>
       <div class="field">
-        <label for="rename-folder">直すフォルダ</label>
+        <label for="rename-folder">フォルダのパス</label>
         <input type="text" id="rename-folder" autocomplete="off" spellcheck="false" placeholder="C:\… または \\サーバ\…">
-      </div>
-      <div class="row">
-        <button type="button" class="btn small" id="btn-rename-base">基準フォルダを入れる</button>
-        <button type="button" class="btn small" id="btn-rename-group">選んだ班のフォルダを入れる</button>
-        <button type="button" class="btn small" id="btn-rename-browse">参照…</button>
       </div>
       <label class="check"><input type="checkbox" id="rename-folders">フォルダも対象(直下のフォルダ名も直す)</label>
       <ul class="targets" aria-label="変換対象の文字">
@@ -98,36 +93,8 @@
       </div>
       <div class="status" id="rename-status" aria-live="polite"></div>
     </section>
-
-    <section class="card" aria-labelledby="h-base">
-      <h2 id="h-base"><span class="n">3</span>基準フォルダ</h2>
-      <p class="help">A班・B班・C班・D班・日勤のフォルダが入っている場所です(Excel 版でブックを置いていた場所)。空にするとこのアプリのフォルダになります。</p>
-      <div class="field">
-        <label for="base-dir">基準フォルダ</label>
-        <input type="text" id="base-dir" autocomplete="off" spellcheck="false">
-      </div>
-      <div class="row">
-        <button type="button" class="btn small" id="btn-base-browse">参照…</button>
-        <button type="button" class="btn wide" id="btn-base-save">保存</button>
-      </div>
-      <div class="status" id="base-status" aria-live="polite"></div>
-    </section>
   </aside>
 </div>
-
-<dialog id="browse">
-  <div class="dlg">
-    <header><strong>フォルダを選ぶ</strong><span class="path" id="browse-path"></span></header>
-    <div style="padding:8px 14px" class="roots" id="browse-roots"></div>
-    <div class="status" id="browse-msg" style="padding:0 14px"></div>
-    <ul id="browse-list"></ul>
-    <footer>
-      <button type="button" class="btn small" id="browse-up">上のフォルダへ</button>
-      <button type="button" class="btn small" id="browse-cancel">やめる</button>
-      <button type="button" class="btn run" id="browse-ok">このフォルダにする</button>
-    </footer>
-  </div>
-</dialog>
 
 <div class="toast" id="toast" hidden role="status"></div>
 

@@ -99,36 +99,24 @@ class FolderTest(unittest.TestCase):
             os.utime(path, (mtime, mtime))
         return path
 
-    def test_group_folder(self):
-        self.assertEqual(fls.group_folder(self.base, ""), self.base)
-        self.assertEqual(fls.group_folder(self.base, "A"), self.base / "A班")
-        self.assertEqual(fls.group_folder(self.base, "HIRU"), self.base / "日勤")
-        with self.assertRaises(ValueError):
-            fls.group_folder(self.base, "Z")
-
     def test_lists_files_only_with_modified(self):
         stamp = time.mktime((2026, 10, 1, 8, 30, 15, 0, 0, -1)) + 0.9
         self.touch("A班/6-1_手順.pdf", stamp)
         self.touch("A班/.hidden")
         (self.base / "A班" / "サブ").mkdir()
         self.touch("A班/サブ/9-9_中.pdf")                  # サブフォルダの中は見ない
-        result = fls.list_folder(self.base, "A")
+        result = fls.list_folder(self.base / "A班")
+        self.assertEqual(result.title, "A班")
         names = [r.file_name for r in result.rows]
         self.assertEqual(sorted(names), [".hidden", "6-1_手順.pdf"])
         row = next(r for r in result.rows if r.file_name == "6-1_手順.pdf")
         self.assertEqual(row.modified, datetime(2026, 10, 1, 8, 30, 15))   # 秒の端数は切り捨て
         self.assertEqual(fls.format_modified(row.modified), "2026/10/1 8:30")
 
-    def test_missing_folder(self):
-        with self.assertRaises(fls.FolderMissing) as ctx:
-            fls.list_folder(self.base, "B")
-        self.assertEqual(ctx.exception.folder, str(self.base / "B班"))
-        self.assertEqual(ctx.exception.message, "指定のフォルダは存在しません。")
-
     def test_to_dict_message_when_over_limit(self):
         for i in range(302):
             self.touch(f"{i}-1_x.pdf")
-        data = fls.to_dict(fls.list_folder(self.base, ""))
+        data = fls.to_dict(fls.list_folder(self.base))
         self.assertEqual(data["count"], 302)
         self.assertEqual(data["sorted_rows"], 300)
         self.assertIn("残りの 2 件は読んだ順", data["message"])

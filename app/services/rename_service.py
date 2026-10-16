@@ -270,21 +270,6 @@ def run(folder: Path, *, rename_folders: bool, plan_id: str,
     return result
 
 
-def resolve_folder(text: str, base_dir: Path) -> Optional[Path]:
-    """画面の入力 → フォルダ。空なら None(VBA: `If T2 = "" Then Exit Sub`)。
-
-    VBA と同じく前後の空白を取り、文字列 `ThisWorkbook.Path` は基準フォルダに読み替える。
-    相対で書かれていれば基準フォルダから見る。
-    """
-    value = (text or "").strip()
-    if value == "":
-        return None
-    if value == "ThisWorkbook.Path":
-        return base_dir
-    path = Path(value)
-    return path if path.is_absolute() else base_dir / path
-
-
 def plan_to_dict(p: RenamePlan) -> dict:
     return {"folder": p.folder, "rename_folders": p.rename_folders,
             "plan_id": p.plan_id, "counts": p.counts(),

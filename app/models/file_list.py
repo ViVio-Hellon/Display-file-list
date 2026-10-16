@@ -30,8 +30,7 @@ class FileRow:
 @dataclass
 class FileList:
     folder: str
-    group_key: str
-    group_label: str
+    title: str                          # 画面と紙面の見出し(フォルダの名前)
     fetched_at: datetime
     rows: list = field(default_factory=list)      # list[FileRow]
     # 並べ替えたのは先頭から何行か(VBA は A1:E300)。これより後ろは読んだ順のまま

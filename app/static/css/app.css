@@ -12,11 +12,6 @@ button,input{font:inherit;color:inherit}
   background:linear-gradient(115deg,var(--bar-a),var(--bar-b));flex-wrap:wrap}
 .bar h1{font-size:var(--fs-lg);margin:0;font-weight:700;white-space:nowrap}
 .bar .ver{color:var(--bar-muted);font-size:var(--fs-xs)}
-.bar .facts{display:flex;gap:8px;flex-wrap:wrap;flex:1;min-width:0}
-.fact{background:var(--bar-face);border:1px solid var(--bar-edge);border-radius:var(--pill);
-  padding:2px 12px;font-size:var(--fs-sm);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.fact b{font-weight:600;color:var(--bar-muted);margin-right:6px}
-.fact.alert{color:var(--bar-alert)}
 .bar .end{background:var(--bar-face);border:1px solid var(--bar-edge);color:var(--bar-ink);
   border-radius:var(--radius-sm);padding:4px 14px;cursor:pointer}
 .bar .end:hover{background:var(--bar-face-on)}
@@ -50,7 +45,7 @@ button,input{font:inherit;color:inherit}
 .notice.error{background:var(--warn-bg);color:var(--warn-fg)}
 .notice.ok{background:var(--ok-bg);color:var(--state-ok)}
 .scroll{flex:1;min-height:0;overflow:auto}
-.empty{padding:40px 20px;color:var(--muted);text-align:center}
+.empty{padding:40px 20px;color:var(--muted);text-align:center;white-space:pre-line;overflow-wrap:anywhere}
 
 table{border-collapse:collapse;width:100%;font-size:var(--fs-sm)}
 th,td{padding:var(--cell-y) var(--cell-x);text-align:left;vertical-align:top;border-bottom:1px solid var(--hairline)}
@@ -69,13 +64,6 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
 .arrow{color:var(--faint);padding:0 4px}
 
 /* 操作 */
-.groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.groups label{display:flex;align-items:center;justify-content:center;gap:6px;min-height:34px;
-  border:1px solid var(--act-idle-line);border-radius:var(--radius-sm);background:var(--act-idle);
-  color:var(--act-idle-fg);cursor:pointer;padding:0 6px}
-.groups input{position:absolute;opacity:0;pointer-events:none}
-.groups label:has(input:checked){background:var(--accent);color:var(--surface);border-color:var(--accent);font-weight:700}
-.groups label:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:2px}
 .row{display:flex;gap:6px;flex-wrap:wrap}
 .btn{min-height:var(--hit);padding:0 14px;border-radius:var(--radius-sm);border:1px solid var(--act-idle-line);
   background:var(--act-idle);color:var(--act-idle-fg);cursor:pointer;font-weight:600}
@@ -94,23 +82,10 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
 .targets li::before{content:"・"}
 .check{display:flex;gap:8px;align-items:center}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
-.status{font-size:var(--fs-sm);color:var(--muted);min-height:1.4em}
+.status{font-size:var(--fs-sm);color:var(--muted);min-height:1.4em;white-space:pre-line;overflow-wrap:anywhere}
 .status.error{color:var(--state-error)}
 .status.ok{color:var(--state-ok)}
 
-/* フォルダ参照 */
-dialog{border:0;border-radius:var(--radius);box-shadow:var(--shadow-pop);padding:0;width:min(560px,94vw);
-  background:var(--surface);color:var(--ink)}
-dialog::backdrop{background:var(--scrim)}
-.dlg{display:flex;flex-direction:column;max-height:80vh}
-.dlg header,.dlg footer{padding:12px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.dlg header{border-bottom:1px solid var(--rule)}
-.dlg footer{border-top:1px solid var(--rule);justify-content:flex-end}
-.dlg .path{font-family:var(--mono);font-size:var(--fs-sm);overflow-wrap:anywhere;flex:1;min-width:0}
-.dlg ul{list-style:none;margin:0;padding:6px;overflow:auto;flex:1}
-.dlg li button{width:100%;text-align:left;border:0;background:transparent;padding:6px 10px;border-radius:var(--radius-xs);cursor:pointer}
-.dlg li button:hover{background:var(--accent-soft)}
-.dlg .roots{display:flex;gap:4px;flex-wrap:wrap}
 
 .toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));
   background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:var(--radius-sm);box-shadow:var(--shadow-pop);max-width:420px}

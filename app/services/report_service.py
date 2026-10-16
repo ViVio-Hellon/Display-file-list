@@ -52,7 +52,7 @@ def render(listing: dict) -> str:
         "<tr><td>{no}</td><td>{title}</td><td class=\"date\">{date}</td><td>{ext}</td></tr>".format(
             no=esc(r["doc_no"]), title=esc(r["title"]), date=esc(r["modified"]), ext=esc(r["ext"]))
         for r in listing["rows"])
-    title = f"{listing['group_label']} 一覧"
+    title = f"{listing['title']} 一覧"
     return f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <title>{esc(title)} - {esc(config.display_name())}</title>

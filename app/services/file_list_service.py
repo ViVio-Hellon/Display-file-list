@@ -1,7 +1,10 @@
 """ファイル名一覧 (VBA `Get_FileName` の移植)
 
-班のフォルダにある**全ファイル**(隠し・システムファイルも含む。サブフォルダは
+指定したフォルダにある**全ファイル**(隠し・システムファイルも含む。サブフォルダは
 見ない)の名前を `文書番号_名称.拡張子` として分け、文書番号の先頭の数字で並べる。
+
+VBA は班のオプションボタン(A/B/C/D/昼)でブックの場所の下の班フォルダを選んでいた。
+Web 版では**フォルダのパスを直接打つ**(2026-10-16 の指示。VER1.2.0)。
 
     VBA のシート「一覧」          この関数の結果
     A 並べ替えキー(最後に消える)  ParsedName.sort_key
@@ -50,42 +53,10 @@ from typing import Iterable, Optional
 from ..models.file_list import FileList, FileRow, ParsedName
 from . import vba_compat
 
-# VBA のオプションボタン(OBA〜OBHIRU)。どれも選ばなければ基準フォルダそのもの。
-# 2つ目はフォルダ名(VBA `Get_FileName` の strF)
-GROUPS = (
-    ("A", "A班"),
-    ("B", "B班"),
-    ("C", "C班"),
-    ("D", "D班"),
-    ("HIRU", "日勤"),
-)
-BASE_GROUP = ("", "基準フォルダ")
-
-# フォーム(UF.frx)のボタンの表記。昼のボタンが「日勤」フォルダを指す。
-# 初期状態はどのボタンも選ばれていない(Value=0)= 基準フォルダ
-VBA_CAPTIONS = {"A": "A", "B": "B", "C": "C", "D": "D", "HIRU": "昼"}
-
-
-def group_button_label(key: str) -> str:
-    """画面のボタンの表記。フォルダ名と VBA の表記が違うときは両方出す(昼 → 日勤)。"""
-    folder = group_label(key)
-    caption = VBA_CAPTIONS.get(key, "")
-    return folder if not caption or folder.startswith(caption) else f"{caption}({folder})"
-
 # VBA `WS.Range("A1:E300").Sort`
 SORT_LIMIT_ROWS = 300
 
 NOTE_TAIL_EMPTY = "「_」の後ろに名前がないため、名称と拡張子は空欄です"
-
-
-class FolderMissing(Exception):
-    """VBA `MsgBox "指定のフォルダは存在しません。"`"""
-
-    message = "指定のフォルダは存在しません。"
-
-    def __init__(self, folder: str) -> None:
-        super().__init__(folder)
-        self.folder = folder
 
 
 class VbaWouldStop(Exception):
@@ -94,21 +65,6 @@ class VbaWouldStop(Exception):
     def __init__(self, file_name: str) -> None:
         super().__init__(file_name)
         self.file_name = file_name
-
-
-def group_label(key: str) -> str:
-    for k, label in GROUPS:
-        if k == key:
-            return label
-    if key == BASE_GROUP[0]:
-        return BASE_GROUP[1]
-    raise ValueError(f"未知の班: {key!r}")
-
-
-def group_folder(base_dir: Path, key: str) -> Path:
-    """VBA: `ThisWorkbook.Path & "\\" & strF`。どれも選んでいなければ基準フォルダ。"""
-    label = group_label(key)
-    return base_dir if key == BASE_GROUP[0] else base_dir / label
 
 
 # ------------------------------------------------------------------
@@ -185,14 +141,11 @@ def scan_files(folder: Path) -> list:
     return entries
 
 
-def list_folder(base_dir: Path, group_key: str, *, strict_vba: bool = False,
+def list_folder(folder: Path, *, strict_vba: bool = False,
                 now: Optional[datetime] = None) -> FileList:
-    folder = group_folder(base_dir, group_key)
-    if not folder.is_dir():
-        raise FolderMissing(str(folder))
+    """フォルダは呼ぶ側で確かめておく(`folder_input.parse`)。"""
     rows = build_rows(scan_files(folder), strict_vba=strict_vba)
-    return FileList(folder=str(folder), group_key=group_key,
-                    group_label=group_label(group_key),
+    return FileList(folder=str(folder), title=folder.name or str(folder),
                     fetched_at=now or datetime.now().replace(microsecond=0),
                     rows=rows, sorted_rows=min(len(rows), SORT_LIMIT_ROWS))
 
@@ -226,8 +179,7 @@ def to_dict(result: FileList) -> dict:
                     f"残りの {unsorted} 件は読んだ順です)")
     return {
         "folder": result.folder,
-        "group": result.group_key,
-        "group_label": result.group_label,
+        "title": result.title,
         "fetched_at": result.fetched_at.strftime("%Y/%m/%d %H:%M:%S"),
         "count": total,
         "sorted_rows": result.sorted_rows,

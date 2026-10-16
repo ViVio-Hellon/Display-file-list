@@ -3,6 +3,6 @@ from __future__ import annotations
 
 
 def register_all(app) -> None:
-    from . import filelist, health, pages, rename, settings
-    for module in (pages, health, filelist, rename, settings):
+    from . import filelist, health, pages, rename
+    for module in (pages, health, filelist, rename):
         module.register(app)

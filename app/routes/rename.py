@@ -7,6 +7,7 @@ from ..core import logging_setup
 from ..repositories import settings_repository
 from ..services import rename_service
 from ..web import HttpError, Request, json_response, require_bool, require_text
+from .filelist import folder_or_error
 
 log = logging_setup.get("app.rename")
 
@@ -14,13 +15,8 @@ LABEL = "全角→半角リネーム"
 
 
 def _folder(data: dict) -> Path:
-    folder = rename_service.resolve_folder(require_text(data, "folder"),
-                                           settings_repository.base_dir())
-    if folder is None:
-        raise HttpError(422, "folder_empty", "直すフォルダを入れてください。")
-    if not folder.is_dir():
-        raise HttpError(422, "folder_missing", "フォルダが見つかりません。",
-                        {"folder": str(folder)})
+    folder = folder_or_error(require_text(data, "folder"))
+    settings_repository.save(settings_repository.KEY_RENAME_DIR, str(folder))
     return folder
 
 

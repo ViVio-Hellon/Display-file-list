@@ -6,7 +6,7 @@ import { ApiError, get, post, token } from "./api.js";
 import { startHeartbeat } from "./health.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { groups: [], baseDir: "", plan: null, planKey: "" };
+const state = { listFolder: "", plan: null, planKey: "" };
 
 function text(el, value) { el.textContent = value == null ? "" : String(value); }
 
@@ -64,52 +64,16 @@ function busy(button, on) {
 // 状態
 // ------------------------------------------------------------------
 async function loadState() {
+  // 最後に使えたパスを入れておく(毎日同じフォルダを打たなくて済むように)
   const s = await get("/api/state");
-  state.groups = s.groups;
-  applyBase(s);
-  const box = $("groups");
-  box.replaceChildren();
-  s.groups.forEach((g, i) => {
-    const label = document.createElement("label");
-    const input = document.createElement("input");
-    input.type = "radio";
-    input.name = "group";
-    input.value = g.key;
-    input.id = "group-" + (g.key || "base");
-    // VBA: どのオプションボタンも選ばなければ基準フォルダ。既定は基準フォルダにしておく
-    if (g.key === "") input.checked = true;
-    label.append(input, document.createTextNode(g.label));
-    box.appendChild(label);
-  });
+  if (!$("list-folder").value) $("list-folder").value = s.list_dir;
+  if (!$("rename-folder").value) $("rename-folder").value = s.rename_dir;
 }
 
-function applyBase(s) {
-  // VBA の T2 は初めから「ThisWorkbook.Path」が入っていた。直すフォルダが空なら基準フォルダを入れる
-  const renameInput = $("rename-folder");
-  if (!renameInput.value || renameInput.value === state.baseDir) renameInput.value = s.base_dir;
-  state.baseDir = s.base_dir;
-  const fact = $("fact-base");
-  text($("fact-base-text"), s.base_dir + (s.base_dir_default ? "(アプリのフォルダ)" : ""));
-  fact.classList.toggle("alert", !s.base_dir_ok);
-  fact.title = s.base_dir_ok ? s.base_dir : "このフォルダはこのPCから見えません";
-  $("base-dir").value = s.base_dir_default ? "" : s.base_dir;
-  $("base-dir").placeholder = s.base_dir_default ? s.base_dir : "";
-}
-
-function selectedGroup() {
-  const checked = document.querySelector('input[name="group"]:checked');
-  return checked ? checked.value : "";
-}
-
-function groupLabel(key) {
-  const g = state.groups.find((x) => x.key === key);
-  return g ? g.label : "";
-}
-
-function joinPath(base, name) {
-  if (!name) return base;
-  const sep = base.includes("\\") || /^[A-Za-z]:/.test(base) ? "\\" : "/";
-  return base.replace(/[\\/]+$/, "") + sep + name;
+// 断りに「読んだパス」を添える。" が残っていた・別の場所を見ていた、が見て分かるように
+function failText(e) {
+  const folder = e && e.body && e.body.folder;
+  return errorText(e) + (folder ? `\n読んだパス: ${folder}` : "");
 }
 
 // ------------------------------------------------------------------
@@ -121,7 +85,8 @@ async function loadList() {
   setStatus("list-status", "読んでいます…");
   showTab("list");
   try {
-    const data = await get("/api/filelist?group=" + encodeURIComponent(selectedGroup()));
+    const data = await get("/api/filelist?folder=" + encodeURIComponent($("list-folder").value));
+    state.listFolder = data.folder;
     renderList(data);
     setStatus("list-status", `${data.count} 件を読みました(${data.fetched_at})。`, "ok");
     $("btn-print").disabled = false;
@@ -130,7 +95,8 @@ async function loadList() {
     $("list-table").hidden = true;
     $("list-head").hidden = true;
     $("list-empty").hidden = false;
-    text($("list-empty"), errorText(e) + (e.body && e.body.folder ? `\n${e.body.folder}` : ""));
+    state.listFolder = "";
+    text($("list-empty"), failText(e));
     notice("list-notice", []);
     setStatus("list-status", errorText(e), "error");
   } finally {
@@ -140,7 +106,7 @@ async function loadList() {
 
 function renderList(data) {
   $("list-head").hidden = false;
-  text($("list-title"), `${data.group_label} の一覧`);
+  text($("list-title"), `${data.title} の一覧`);
   text($("list-meta"), `${data.folder} ／ 取得 ${data.fetched_at} ／ ${data.count} 件`);
   const notes = [];
   if (data.count > data.sorted_rows) notes.push(["warn", data.message]);
@@ -168,7 +134,8 @@ function renderList(data) {
 }
 
 function openPrint() {
-  const url = "/print?group=" + encodeURIComponent(selectedGroup()) + "&t=" + encodeURIComponent(token());
+  // 印刷するのは画面に出ている一覧のフォルダ(入力欄をあとで書き換えていても)
+  const url = "/print?folder=" + encodeURIComponent(state.listFolder) + "&t=" + encodeURIComponent(token());
   const w = window.open(url, "_blank");
   if (!w) toast("別の窓を開けませんでした。ブラウザのポップアップの設定を確かめてください。");
 }
@@ -216,7 +183,7 @@ function renderRenameError(e) {
   $("rename-table").hidden = true;
   $("rename-head").hidden = true;
   $("rename-empty").hidden = false;
-  text($("rename-empty"), errorText(e) + (e.body && e.body.folder ? `\n${e.body.folder}` : ""));
+  text($("rename-empty"), failText(e));
   notice("rename-notice", []);
   setStatus("rename-status", errorText(e), "error");
 }
@@ -319,70 +286,6 @@ function renderResult(result) {
 }
 
 // ------------------------------------------------------------------
-// 3. 基準フォルダ
-// ------------------------------------------------------------------
-async function saveBase() {
-  const button = $("btn-base-save");
-  busy(button, true);
-  try {
-    const s = await post("/api/settings", { base_dir: $("base-dir").value });
-    applyBase(s);
-    setStatus("base-status", "保存しました。", "ok");
-  } catch (e) {
-    setStatus("base-status", errorText(e), "error");
-  } finally {
-    busy(button, false);
-  }
-}
-
-// ------------------------------------------------------------------
-// フォルダ参照
-// ------------------------------------------------------------------
-let browseTarget = null;
-let browseCurrent = "";
-
-async function openBrowse(inputId) {
-  browseTarget = $(inputId);
-  $("browse").showModal();
-  await browseTo(browseTarget.value || browseTarget.placeholder || state.baseDir);
-}
-
-async function browseTo(path) {
-  try {
-    const v = await get("/api/fs/list?path=" + encodeURIComponent(path || ""));
-    browseCurrent = v.exists ? v.path : "";
-    text($("browse-path"), v.path || "(未選択)");
-    text($("browse-msg"), v.message || "");
-    $("browse-up").disabled = !v.parent;
-    $("browse-up").onclick = () => browseTo(v.parent);
-    $("browse-ok").disabled = !v.exists;
-    const roots = $("browse-roots");
-    roots.replaceChildren();
-    for (const r of v.roots) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "btn small";
-      text(b, r.name);
-      b.onclick = () => browseTo(r.path);
-      roots.appendChild(b);
-    }
-    const list = $("browse-list");
-    list.replaceChildren();
-    for (const d of v.dirs) {
-      const li = document.createElement("li");
-      const b = document.createElement("button");
-      b.type = "button";
-      text(b, "📁 " + d.name);
-      b.onclick = () => browseTo(d.path);
-      li.appendChild(b);
-      list.appendChild(li);
-    }
-  } catch (e) {
-    text($("browse-msg"), errorText(e));
-  }
-}
-
-// ------------------------------------------------------------------
 async function exitApp() {
   try {
     await post("/api/shutdown", {});
@@ -401,28 +304,13 @@ function wire() {
   $("tab-rename").onclick = () => showTab("rename");
   $("btn-list").onclick = loadList;
   $("btn-print").onclick = openPrint;
-  $("groups").addEventListener("change", () => { $("btn-print").disabled = true; });
+  $("list-folder").addEventListener("input", () => { $("btn-print").disabled = true; });
+  $("list-folder").addEventListener("keydown", (ev) => { if (ev.key === "Enter") loadList(); });
   $("btn-preview").onclick = preview;
   $("btn-run").onclick = runRename;
   $("rename-folder").addEventListener("input", clearPlan);
+  $("rename-folder").addEventListener("keydown", (ev) => { if (ev.key === "Enter") preview(); });
   $("rename-folders").addEventListener("change", clearPlan);
-  $("btn-rename-base").onclick = () => { $("rename-folder").value = state.baseDir; clearPlan(); };
-  $("btn-rename-group").onclick = () => {
-    const key = selectedGroup();
-    $("rename-folder").value = key ? joinPath(state.baseDir, groupLabel(key)) : state.baseDir;
-    clearPlan();
-  };
-  $("btn-rename-browse").onclick = () => openBrowse("rename-folder");
-  $("btn-base-browse").onclick = () => openBrowse("base-dir");
-  $("btn-base-save").onclick = saveBase;
-  $("browse-cancel").onclick = () => $("browse").close();
-  $("browse-ok").onclick = () => {
-    if (browseTarget && browseCurrent) {
-      browseTarget.value = browseCurrent;
-      browseTarget.dispatchEvent(new Event("input"));
-    }
-    $("browse").close();
-  };
   $("btn-exit").onclick = exitApp;
   $("btn-reload").onclick = () => location.reload();
 }

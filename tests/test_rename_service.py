@@ -136,13 +136,6 @@ class RenameTest(unittest.TestCase):
         self.assertTrue((self.dir / "Ａ.txt").exists())
 
     # --- 入力 ----------------------------------------------------------
-    def test_resolve_folder(self):
-        base = Path("/base")
-        self.assertIsNone(rs.resolve_folder("  ", base))
-        self.assertEqual(rs.resolve_folder(" ThisWorkbook.Path ", base), base)
-        self.assertEqual(rs.resolve_folder("A班", base), base / "A班")
-        self.assertEqual(rs.resolve_folder(str(self.dir), base), self.dir)
-
     def test_split_base_ext_like_fso(self):
         self.assertEqual(rs.split_base_ext("a.b.txt"), ("a.b", "txt"))
         self.assertEqual(rs.split_base_ext("README"), ("README", ""))

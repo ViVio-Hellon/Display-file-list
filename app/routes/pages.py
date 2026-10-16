@@ -5,8 +5,7 @@ import mimetypes
 from pathlib import Path
 
 from ..core import config
-from ..repositories import settings_repository
-from ..services import file_list_service, report_service
+from ..services import file_list_service, folder_input, report_service
 from ..web import HttpError, Request, Response, html_response
 
 APP_DIR = Path(__file__).resolve().parent.parent
@@ -46,14 +45,15 @@ def register(app) -> None:
 
     @r.get("/print")
     def print_view(req: Request):
-        group = req.query.get("group", "")
         try:
-            listing = file_list_service.list_folder(settings_repository.base_dir(), group)
-        except ValueError:
-            return html_response(report_service.render_error("班の指定が違います。"), 400)
-        except file_list_service.FolderMissing as exc:
+            folder = folder_input.parse(req.query.get("folder", ""))
+            listing = file_list_service.list_folder(folder)
+        except folder_input.FolderInputError as exc:
             return html_response(report_service.render_error(
-                f"{exc.message}({exc.folder})"), 422)
+                exc.message + (f"({exc.folder})" if exc.folder else "")), 422)
+        except OSError as exc:
+            return html_response(report_service.render_error(
+                f"フォルダを読めません({exc.strerror or exc})。"), 422)
         return html_response(report_service.render(file_list_service.to_dict(listing)))
 
 

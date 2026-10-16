@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from app.services import file_list_service as fls
+from app.services import folder_input
 
 EXPORT = Path(__file__).resolve().parent.parent / "vba" / "export"
 
@@ -31,15 +32,17 @@ class KirokuModuleTest(unittest.TestCase):
     def setUp(self):
         self.src = read("記録.bas")
 
-    def test_group_folders(self):
+    def test_group_folders_documented(self):
+        # 班のボタン(A/B/C/D/昼)は VER1.2.0 でなくし、パスを打つ形にした(2026-10-16 の指示)。
+        # VBA が読んでいたフォルダ名は記録として残す
         found = dict(re.findall(r'Case UF\.OB(\w+):\s+strF = "(.+?)"', self.src))
-        self.assertEqual(found, {k: label for k, label in fls.GROUPS})
+        self.assertEqual(found, {"A": "A班", "B": "B班", "C": "C班", "D": "D班", "HIRU": "日勤"})
 
     def test_sort_range(self):
         self.assertIn('WS.Range("A1:E' + str(fls.SORT_LIMIT_ROWS) + '").Sort', self.src)
 
     def test_missing_message(self):
-        self.assertIn('MsgBox "' + fls.FolderMissing.message + '"', self.src)
+        self.assertIn('MsgBox "' + folder_input.MESSAGE_MISSING + '"', self.src)
 
     def test_no_option_explicit(self):
         # 移植計画 Q1: folder / file を宣言せずに使っているので、このモジュールには Option Explicit が無い
@@ -66,10 +69,6 @@ class FormTest(unittest.TestCase):
     def test_rename_folder_default_is_workbook_path(self):
         # T2(直すフォルダ)の初期値。Forms 2.0 は ASCII だけの文字列を1バイトで持つ
         self.assertIn(b"ThisWorkbook.Path", (EXPORT / "UF.frx").read_bytes())
-
-    def test_hiru_caption(self):
-        self.assertEqual(fls.group_button_label("HIRU"), "昼(日勤)")
-        self.assertEqual(fls.group_button_label("A"), "A班")
 
 
 if __name__ == "__main__":
