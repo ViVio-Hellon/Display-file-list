@@ -4,6 +4,8 @@
 */
 import { ApiError, get, post, token } from "./api.js";
 import { startHeartbeat } from "./health.js";
+import { startErrorReport } from "./errors.js";
+import { showLogCount } from "./logcount.js";
 
 const $ = (id) => document.getElementById(id);
 const state = { listFolder: "", plan: null, planKey: "" };
@@ -316,5 +318,7 @@ function wire() {
 }
 
 wire();
+startErrorReport(toast);
+showLogCount();
 startHeartbeat((online) => { $("offline").hidden = online; });
 loadState().catch((e) => setStatus("list-status", errorText(e), "error"));

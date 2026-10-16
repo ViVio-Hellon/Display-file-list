@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="tool-token" content="{{TOKEN}}">
+<meta name="heartbeat-seconds" content="{{HEARTBEAT}}">
+<meta name="app-version" content="{{VERSION}}">
+<title>ログ - {{APP_NAME}}</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/tokens.css?v={{VERSION}}">
+<link rel="stylesheet" href="/static/css/app.css?v={{VERSION}}">
+<link rel="stylesheet" href="/static/css/logs.css?v={{VERSION}}">
+</head>
+<body>
+<header class="bar">
+  <h1>{{APP_NAME}}</h1><span class="ver">VER{{VERSION}}</span>
+  <span class="spacer"></span>
+  <a class="end" href="/">← ファイル名の画面へ</a>
+</header>
+<div class="offline" id="offline" hidden role="alert">
+  <span>アプリとの接続が切れています。終了したか、止まっています。</span>
+  <button type="button" class="btn small" id="btn-reload">読み込み直す</button>
+</div>
+
+<main class="logs">
+  <section class="card" aria-labelledby="h-dir">
+    <h2 id="h-dir">ログの出力先</h2>
+    <p class="help">エラーの記録(出来事_日付_端末.jsonl)・なぜなぜ・文字のログ(app.log・server.log)・CSV の書き出しを置く場所です。
+      空にするとこの端末の logs です。<strong>共有フォルダを指せば、どの端末で起きたエラーも1つの一覧に並びます</strong>(ファイル名に端末の名前が入るので混ざりません)。
+      起動の記録(launcher.log)は、起動できないときに読むものなので、いつもこの端末に置きます。</p>
+    <dl class="kv" id="dir-status"></dl>
+    <div class="notice warn" id="dir-problem" hidden></div>
+    <div class="field">
+      <label for="log-dir">出力先のフォルダのパス</label>
+      <input type="text" id="log-dir" autocomplete="off" spellcheck="false" placeholder="空ならこの端末の logs(例: \\サーバ\共有\ファイル名一覧取得\logs)">
+    </div>
+    <div class="row">
+      <button type="button" class="btn run" id="btn-dir-save">保存(その場で書き先が移ります)</button>
+      <button type="button" class="btn" id="btn-dir-local">この端末の logs に戻す</button>
+    </div>
+    <div class="status" id="dir-msg" aria-live="polite"></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-list">
+    <h2 id="h-list">記録</h2>
+    <div class="filters">
+      <div class="period"><span>期間</span><span class="dates"><input type="date" id="log-start" aria-label="期間のはじめ"> 〜 <input type="date" id="log-end" aria-label="期間のおわり"></span></div>
+      <label>見るもの <select id="log-scope"></select></label>
+      <label>端末 <select id="log-terminal"></select></label>
+      <label class="grow">番号・文言 <input type="text" id="log-q" placeholder="E1016-… や フォルダ名"></label>
+      <button type="button" class="btn small" id="log-reload">読み直す</button>
+      <button type="button" class="btn small" id="log-csv">CSV に出す</button>
+    </div>
+    <p class="meta" id="log-counts"></p>
+    <div class="status" id="log-msg" aria-live="polite"></div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>日時</th><th>番号</th><th>種類</th><th>端末</th><th>操作</th><th>何と出た</th><th>なぜなぜ</th></tr></thead>
+        <tbody id="log-rows"></tbody>
+      </table>
+    </div>
+    <p class="help">行を押すとなぜなぜシートが開きます。</p>
+  </section>
+
+  <section class="card sheet" id="log-sheet" hidden aria-labelledby="ls-title">
+    <div class="sheet-head">
+      <h2 id="ls-title">なぜなぜシート <code id="ls-id"></code></h2>
+      <button type="button" class="btn small" id="ls-close">閉じる</button>
+    </div>
+    <div class="sheet-grid">
+      <div>
+        <h3>起きたこと</h3><dl class="kv" id="ls-facts"></dl>
+        <h3>直接の原因</h3><dl class="kv" id="ls-cause"></dl>
+        <h3>そのときの状態</h3><dl class="kv" id="ls-state"></dl>
+        <h3>それまでの経過(同じタブの前30分・後5分)</h3><ol class="steps" id="ls-steps"></ol>
+        <div id="ls-input-box"><h3>送った中身</h3><dl class="kv" id="ls-input"></dl></div>
+        <div id="ls-crumbs-box"><h3>画面で押したもの</h3><ol class="steps" id="ls-crumbs"></ol></div>
+        <details id="ls-trace-box"><summary>通り道(traceback)</summary><pre id="ls-trace"></pre></details>
+      </div>
+      <div>
+        <h3>なぜなぜ(人が書く)</h3>
+        <p class="hint" id="ls-hint"></p>
+        <ol class="whys" id="ls-whys"></ol>
+        <div class="field"><label for="ls-measure">対策</label><textarea id="ls-measure" rows="3" maxlength="400"></textarea></div>
+        <div class="row">
+          <label class="field">状態 <select id="ls-status"></select></label>
+          <label class="field grow">書いた人 <input type="text" id="ls-by" maxlength="40"></label>
+        </div>
+        <div class="row"><button type="button" class="btn run wide" id="ls-save">なぜなぜを残す</button></div>
+        <p class="meta" id="ls-saved"></p>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" hidden role="status"></div>
+<script type="module" src="/static/js/logs.js?v={{VERSION}}"></script>
+</body>
+</html>

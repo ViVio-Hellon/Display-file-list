@@ -39,6 +39,11 @@ def register(app) -> None:
         return html_response(_fill((TEMPLATES / "index.html").read_text(encoding="utf-8"),
                                    page_values()))
 
+    @r.get("/logs")
+    def logs_page(req: Request):
+        return html_response(_fill((TEMPLATES / "logs.html").read_text(encoding="utf-8"),
+                                   page_values()))
+
     @r.get("/loading")
     def loading(req: Request):
         return html_response(_fill(LOADING_HTML.read_text(encoding="utf-8"), page_values()))

@@ -1,4 +1,4 @@
-"""利用者ごとの覚え書き(最後に使ったフォルダのパス)
+"""利用者ごとの覚え書き(最後に使ったフォルダのパス・ログの出力先)
 
 VER1.2.0 で基準フォルダの設定をなくし、フォルダはパスを打つだけにした。
 毎日同じフォルダを打たなくて済むよう、**最後に使えたパス**だけを覚えておき、
@@ -13,7 +13,7 @@ import json
 import os
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from ..core import config, logging_setup
 
@@ -21,6 +21,7 @@ log = logging_setup.get("app.settings")
 
 KEY_LIST_DIR = "list_dir"          # ファイル名取得のフォルダ
 KEY_RENAME_DIR = "rename_dir"      # ファイル名変換のフォルダ
+KEY_LOG_DIR = "log_dir"            # ログの出力先(空ならこの端末の logs)
 
 _lock = threading.Lock()           # 一覧(GET)とリネーム(POST)が同時に書いても混ざらないように
 
@@ -64,3 +65,9 @@ def last_dirs() -> dict:
     data = load()
     return {"list_dir": str(data.get(KEY_LIST_DIR, "") or ""),
             "rename_dir": str(data.get(KEY_RENAME_DIR, "") or "")}
+
+
+def log_dir() -> Optional[Path]:
+    """ログの出力先。決めていなければ None(この端末の logs を使う)。"""
+    text = str(get(KEY_LOG_DIR, "") or "").strip()
+    return Path(text) if text else None

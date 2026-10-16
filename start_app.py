@@ -90,6 +90,16 @@ def check_environment() -> list:
     return results
 
 
+def _note_event(message: str, label: str) -> None:
+    """起動・終了も出来事に残す(ログの面の経過に並ぶように)。記録で起動を止めない。"""
+    try:
+        from app.core import event_log
+        event_log.note(message, label=label)
+        event_log.flush(2.0)
+    except Exception:                                      # noqa: BLE001
+        pass
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="ファイル名一覧取得を起動します")
     parser.add_argument("--check", action="store_true", help="環境の確認だけして終わる")
@@ -100,8 +110,9 @@ def main(argv=None) -> int:
         _notify(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} 以上が要ります(いま {sys.version.split()[0]})。")
         return 1
 
-    from app.core import config, logging_setup
+    from app.core import config, event_log, logging_setup
     logging_setup.setup(console=_console_available())
+    event_log.install()
     log = logging_setup.get("launcher.start")
     t0 = time.time()
     log.info("起動: 版 %s / Python %s (%s) / 置き場所 %s / pid %s",
@@ -177,6 +188,8 @@ def _serve(args, log, t0: float) -> int:
         app.state.ready = True
         app.state.stage = "起動完了"
         log.info("準備完了まで %.2f 秒", time.time() - t0)
+        _note_event(f"起動しました(版 {config.version()}・port {port}・"
+                    f"準備まで {time.time() - t0:.2f} 秒)", "起動")
 
     def on_idle(why: str) -> None:
         stop_reason["why"] = why
@@ -193,6 +206,7 @@ def _serve(args, log, t0: float) -> int:
     except KeyboardInterrupt:
         stop_reason["why"] = "Ctrl+C"
     idle.stop()
+    _note_event(f"終了しました: {stop_reason['why']}", "終了")
     server.stop()
     log.info("終了: %s(動いていた時間 %.0f 秒)", stop_reason["why"], time.time() - t0)
     return 0

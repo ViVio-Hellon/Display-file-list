@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="tool-token" content="{{TOKEN}}">
 <meta name="heartbeat-seconds" content="{{HEARTBEAT}}">
+<meta name="app-version" content="{{VERSION}}">
 <title>{{APP_NAME}}</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/static/css/tokens.css?v={{VERSION}}">
@@ -13,6 +14,8 @@
 <body>
 <header class="bar">
   <h1>{{APP_NAME}}</h1><span class="ver">VER{{VERSION}}</span>
+  <span class="spacer"></span>
+  <a class="end" id="link-logs" href="/logs">ログ<span class="count" id="log-count" hidden></span></a>
   <button type="button" class="end" id="btn-exit">終了</button>
 </header>
 <div class="offline" id="offline" hidden role="alert">

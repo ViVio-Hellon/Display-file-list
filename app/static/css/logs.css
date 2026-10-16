@@ -1,0 +1,39 @@
+/* ログの面。並べるだけ(判断はサーバ)。色は tokens.css だけから取る */
+body{overflow:auto}
+.logs{display:flex;flex-direction:column;gap:12px;padding:14px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));min-width:0}
+.logs .card h2{font-size:var(--fs-lg)}
+.logs h3{font-size:var(--fs-sm);color:var(--muted);margin:12px 0 4px}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 12px;margin:0;font-size:var(--fs-sm)}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.filters{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end;font-size:var(--fs-sm)}
+.filters label{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
+.filters label.grow{flex:1;min-width:180px}
+.filters .period{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
+.filters .period .dates{display:flex;align-items:center;gap:6px;color:var(--ink);white-space:nowrap}
+.filters input,.filters select,.sheet select,.sheet input,.sheet textarea{min-height:32px;padding:0 8px;border:1px solid var(--field-line);
+  border-radius:var(--radius-xs);background:var(--surface);color:var(--ink);font:inherit}
+.sheet textarea{padding:6px 8px;width:100%;resize:vertical}
+.meta{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+.table-box{overflow:auto;max-height:50vh;border:1px solid var(--hairline);border-radius:var(--radius-xs)}
+.table-box th,.table-box td{white-space:nowrap}
+.log-row{cursor:pointer}
+.log-row.is-open{background:var(--accent-soft)}
+.log-row td.msg{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-row code{font-family:var(--mono);font-size:var(--fs-xs)}
+.badge{display:inline-block;padding:0 8px;border-radius:var(--pill);font-size:var(--fs-xs);font-weight:700;white-space:nowrap;background:var(--raised);color:var(--muted)}
+.badge.alert{background:var(--warn-bg);color:var(--warn-fg)}
+.badge.todo{background:var(--caution-bg);color:var(--caution-fg)}
+.badge.done{background:var(--ok-bg);color:var(--state-ok)}
+.sheet-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.sheet-head code{font-family:var(--mono)}
+.sheet-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.steps{margin:0;padding-left:1.4em;font-size:var(--fs-sm);font-family:var(--mono)}
+.steps li.is-target{font-weight:700;color:var(--state-error)}
+.whys{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.whys label{font-size:var(--fs-sm);color:var(--muted)}
+.hint{margin:0 0 8px;padding:6px 10px;background:var(--info-bg);color:var(--info-fg);border-radius:var(--radius-xs);font-size:var(--fs-sm)}
+.hint:empty{display:none}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-xs);background:var(--sunken);padding:8px;border-radius:var(--radius-xs)}
+.row .grow{flex:1}
+@media (max-width:900px){.sheet-grid{grid-template-columns:minmax(0,1fr)}}
