@@ -96,14 +96,23 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
   .work{grid-template-columns:minmax(0,1fr);overflow:auto}
   .result{min-height:60vh}
 }
-/* 印刷(VER1.6.0): 画面ではなく紙面(#print-sheet)だけを出す。A4 縦・見出し行は各ページ */
+/* 印刷(VER1.6.0): 画面ではなく紙面(#print-sheet)だけを出す。A4 縦・見出し行は各ページ
+
+   **紙の端から 5mm 以上内側に刷る**(VER1.6.1。coil-packing-tools と同じ決まり)。
+   プリンターは紙の縁 約 4mm に刷れない。プレビューは端まで描くので収まって見えるが、刷ると欠ける。
+   距離は `@page` の余白ではなく**紙の中(.print-sheet の padding)**で取る。`@page` の余白は
+   印刷ダイアログの「余白」で上書きされ、「なし」を選ぶと中身が紙の端から刷られるため。
+   `@page` を 0 にしておけば、ダイアログが「デフォルト」でも「なし」でも同じ位置に刷れる
+   (ブラウザが余白に入れる日付・URL も刷られない)。2 枚目以降の紙の上端・下端も同じだけ空ける
+   (box-decoration-break: clone)。色は印刷の設定(背景のグラフィック)に関わらず同じに刷る */
 .print-sheet{display:none}
 @media print{
-  @page{size:A4 portrait;margin:10mm 8mm 12mm;
-    @bottom-right{content:counter(page) " / " counter(pages);font-size:8pt;color:#555}}
+  @page{size:A4 portrait;margin:0}
   html,body{height:auto;background:#fff;color:#000;display:block}
   body>*:not(.print-sheet){display:none!important}
-  .print-sheet{display:block;font-size:9pt;line-height:1.35}
+  .print-sheet{display:block;font-size:9pt;line-height:1.35;padding:8mm;
+    box-decoration-break:clone;-webkit-box-decoration-break:clone;
+    print-color-adjust:exact;-webkit-print-color-adjust:exact}
   .print-sheet h1{font-size:13pt;margin:0 0 2mm}
   .print-sheet .p-meta{margin:0 0 2mm;color:#333;overflow-wrap:anywhere}
   .print-sheet .p-warn{margin:0 0 2mm;font-weight:700}
@@ -113,7 +122,7 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
   .print-sheet th,.print-sheet td{border:0.5pt solid #777;padding:1mm 1.5mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}
   .print-sheet tbody tr:hover{background:none}
   .print-sheet thead th{position:static;color:#000;font-size:9pt;white-space:normal}
-  .print-sheet th{background:#eee;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-sheet th{background:#eee;font-weight:700}
   .print-sheet td.p-date{white-space:nowrap}
   .print-sheet .p-note{display:block;font-size:7.5pt;color:#444}
   .print-sheet col.c-no{width:22%}.print-sheet col.c-title{width:50%}
