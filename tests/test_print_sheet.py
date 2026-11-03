@@ -38,6 +38,15 @@ class PrintSheetTest(unittest.TestCase):
             self.assertIn("印刷する一覧がありません", self.data[key])
             self.assertNotIn("<table>", self.data[key])
 
+    def test_folder_list_sheet(self):
+        """フォルダの一覧(VER1.7.0): 見出しは「◯◯ のフォルダ一覧」、拡張子の列は無い。"""
+        html = self.data["folders"]
+        self.assertIn("<h1>A班 のフォルダ一覧</h1>", html)
+        self.assertIn("<thead><tr><th>文書番号</th><th>名称</th><th>更新日時</th></tr></thead>", html)
+        self.assertIn('<tr><td>3-1</td><td>写真</td><td class="p-date">2026/10/2 9:05</td></tr>', html)
+        self.assertEqual(html.count("<col "), 3)
+        self.assertIn("<h1>A班 の一覧</h1>", self.data["normal"])             # ファイルはこれまでどおり
+
 
 if __name__ == "__main__":
     unittest.main()

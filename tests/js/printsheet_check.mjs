@@ -17,4 +17,6 @@ console.log(JSON.stringify({
   over: buildPrintHtml(over),
   empty: buildPrintHtml(null),
   zero: buildPrintHtml({ ...list, rows: [], count: 0 }),
+  folders: buildPrintHtml({ ...list, target: "folders",
+    rows: [{ file_name: "3-1_写真", doc_no: "3-1", title: "写真", modified: "2026/10/2 9:05", ext: "", note: "" }], count: 1 }),
 }));

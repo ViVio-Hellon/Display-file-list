@@ -6,7 +6,7 @@ import { ApiError, get, post } from "./api.js";
 import { startHeartbeat } from "./health.js";
 import { startErrorReport } from "./errors.js";
 import { copyRows } from "./copytable.js";
-import { fillPrintSheet } from "./printsheet.js";
+import { fillPrintSheet, listTitle } from "./printsheet.js";
 import { showLogCount } from "./logcount.js";
 
 const $ = (id) => document.getElementById(id);
@@ -72,6 +72,28 @@ async function loadState() {
   const s = await get("/api/state");
   if (!$("list-folder").value) $("list-folder").value = s.list_dir;
   if (!$("rename-folder").value) $("rename-folder").value = s.rename_dir;
+  setListTarget(s.list_target);
+}
+
+// ------------------------------------------------------------------
+// 一覧にするもの(VER1.7.0): ファイル / フォルダ
+// ------------------------------------------------------------------
+const TARGET_LABEL = { files: "ファイル", folders: "フォルダ" };
+
+function listTarget() {
+  const on = document.querySelector('input[name="list-target"]:checked');
+  return on ? on.value : "files";
+}
+
+function setListTarget(target) {
+  const input = document.querySelector(`input[name="list-target"][value="${target === "folders" ? "folders" : "files"}"]`);
+  if (input) input.checked = true;
+  showListTarget();
+}
+
+// ボタンの名前を選んだものに合わせる(VBA の「ファイル名取得」は、ファイルを選んだときの名前)
+function showListTarget() {
+  text($("btn-list"), listTarget() === "folders" ? "フォルダ名取得" : "ファイル名取得");
 }
 
 // 断りに「読んだパス」を添える。" が残っていた・別の場所を見ていた、が見て分かるように
@@ -89,7 +111,8 @@ async function loadList() {
   setStatus("list-status", "読んでいます…");
   showTab("list");
   try {
-    const data = await get("/api/filelist?folder=" + encodeURIComponent($("list-folder").value));
+    const data = await get("/api/filelist?folder=" + encodeURIComponent($("list-folder").value)
+      + "&target=" + encodeURIComponent(listTarget()));
     state.listFolder = data.folder;
     state.listRows = data.rows;
     state.list = data;
@@ -97,7 +120,7 @@ async function loadList() {
     renderList(data);
     $("btn-copy").disabled = data.count === 0;
     $("btn-print").disabled = data.count === 0;
-    setStatus("list-status", `${data.count} 件を読みました(${data.fetched_at})。`, "ok");
+    setStatus("list-status", `${TARGET_LABEL[data.target] || ""} ${data.count} 件を読みました(${data.fetched_at})。`.trim(), "ok");
   } catch (e) {
     $("list-table").hidden = true;
     $("list-head").hidden = true;
@@ -118,7 +141,9 @@ async function loadList() {
 
 function renderList(data) {
   $("list-head").hidden = false;
-  text($("list-title"), `${data.title} の一覧`);
+  const folders = data.target === "folders";
+  text($("list-title"), listTitle(data));
+  $("list-th-ext").hidden = folders;              // フォルダには拡張子が無い
   text($("list-meta"), `${data.folder} ／ 取得 ${data.fetched_at} ／ ${data.count} 件`);
   const notes = [];
   if (data.count > data.sorted_rows) notes.push(["warn", data.message]);
@@ -137,12 +162,15 @@ function renderList(data) {
       text(n, `${r.file_name} … ${r.note}`);
       title.appendChild(n);
     }
-    tr.append(title, td(r.modified, "date"), td(r.ext, "mono"));
+    tr.append(title, td(r.modified, "date"));
+    if (!folders) tr.append(td(r.ext, "mono"));
     body.appendChild(tr);
   });
   $("list-table").hidden = data.count === 0;
   $("list-empty").hidden = data.count !== 0;
-  if (data.count === 0) text($("list-empty"), "このフォルダにファイルはありません。");
+  if (data.count === 0) {
+    text($("list-empty"), folders ? "このフォルダの中にフォルダはありません。" : "このフォルダにファイルはありません。");
+  }
 }
 
 
@@ -310,7 +338,7 @@ async function copyList() {
   // 画面に出ている一覧そのもの(取り直さない)。並びも画面と同じ
   const rows = state.listRows;
   if (!rows.length) return;
-  if (await copyRows(rows)) {
+  if (await copyRows(rows, { target: state.list && state.list.target })) {
     setStatus("list-status", `${rows.length} 件をコピーしました。Excel に貼ると列に分かれます。`, "ok");
     toast(`一覧 ${rows.length} 件をコピーしました`);
   } else {
@@ -334,6 +362,9 @@ function wire() {
   $("tab-list").onclick = () => showTab("list");
   $("tab-rename").onclick = () => showTab("rename");
   $("btn-list").onclick = loadList;
+  for (const input of document.querySelectorAll('input[name="list-target"]')) {
+    input.addEventListener("change", showListTarget);
+  }
   $("btn-copy").onclick = copyList;
   $("btn-print").onclick = printList;
   // Ctrl+P で印刷しても同じ紙面に(一覧が無ければ理由を印刷する。真っ白な紙にしない)

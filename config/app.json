@@ -1,7 +1,7 @@
 {
   "app_id": "nlm.file-list-tool",
   "display_name": "ファイル名一覧取得",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "monitor_level": 1,
 
   "local_dir_name": "FileListTool",

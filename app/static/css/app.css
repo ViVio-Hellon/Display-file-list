@@ -84,6 +84,16 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
 .targets{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:minmax(0,1fr);gap:0;font-size:var(--fs-sm);color:var(--muted)}
 .targets li::before{content:"・"}
 .check{display:flex;gap:8px;align-items:center}
+/* 一覧にするもの(VER1.7.0): ファイル / フォルダ。押せる大きさの2つ並び */
+.choice{margin:0;padding:0;border:0;min-width:0;display:flex;flex-direction:column;gap:4px}
+.choice legend{font-size:var(--fs-sm);color:var(--muted);padding:0;margin-bottom:4px}
+.choice .opts{display:flex;gap:6px}
+.choice label{flex:1;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--hit);
+  border:1px solid var(--act-idle-line);border-radius:var(--radius-sm);background:var(--act-idle);color:var(--act-idle-fg);
+  cursor:pointer;font-weight:600}
+.choice input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.choice label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.choice label:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:2px}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
 .status{font-size:var(--fs-sm);color:var(--muted);min-height:1.4em;white-space:pre-line;overflow-wrap:anywhere}
 .status.error{color:var(--state-error)}
@@ -128,4 +138,5 @@ td .note{display:block;color:var(--state-warn);font-size:var(--fs-xs)}
   .print-sheet .p-note{display:block;font-size:7.5pt;color:#444}
   .print-sheet col.c-no{width:22%}.print-sheet col.c-title{width:50%}
   .print-sheet col.c-date{width:18%}.print-sheet col.c-ext{width:10%}
+  .print-sheet col.c-title.f{width:60%}
 }

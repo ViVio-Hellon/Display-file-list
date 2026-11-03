@@ -28,12 +28,17 @@ def register(app) -> None:
 
     @r.get("/api/filelist")
     def filelist(req: Request):
+        # 一覧にするもの(画面の選択ボタン)。無ければファイル(VBA どおり)
+        target = req.query.get("target", "") or file_list_service.TARGET_FILES
+        if target not in file_list_service.TARGETS:
+            raise HttpError(422, "bad_target", "一覧にするもの(ファイル / フォルダ)を選んでください。")
         folder = folder_or_error(req.query.get("folder", ""))
         try:
-            result = file_list_service.list_folder(folder)
+            result = file_list_service.list_folder(folder, target=target)
         except OSError as exc:
             raise HttpError(422, "folder_unreadable",
                             f"フォルダを読めません({exc.strerror or exc})。", {"folder": str(folder)})
         settings_repository.save(settings_repository.KEY_LIST_DIR, str(folder))
-        log.info("一覧: %s %d 件", result.folder, len(result.rows))
+        settings_repository.save(settings_repository.KEY_LIST_TARGET, target)
+        log.info("一覧(%s): %s %d 件", target, result.folder, len(result.rows))
         return json_response(file_list_service.to_dict(result))

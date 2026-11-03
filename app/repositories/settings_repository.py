@@ -22,6 +22,7 @@ log = logging_setup.get("app.settings")
 KEY_LIST_DIR = "list_dir"          # ファイル名取得のフォルダ
 KEY_RENAME_DIR = "rename_dir"      # ファイル名変換のフォルダ
 KEY_LOG_DIR = "log_dir"            # ログの出力先(空ならこの端末の logs)
+KEY_LIST_TARGET = "list_target"    # 一覧にするもの(files / folders)。最後に使えたもの
 
 _lock = threading.Lock()           # 一覧(GET)とリネーム(POST)が同時に書いても混ざらないように
 
@@ -63,8 +64,10 @@ def save(key: str, value: Any) -> None:
 
 def last_dirs() -> dict:
     data = load()
+    target = data.get(KEY_LIST_TARGET)
     return {"list_dir": str(data.get(KEY_LIST_DIR, "") or ""),
-            "rename_dir": str(data.get(KEY_RENAME_DIR, "") or "")}
+            "rename_dir": str(data.get(KEY_RENAME_DIR, "") or ""),
+            "list_target": target if target in ("files", "folders") else "files"}
 
 
 def log_dir() -> Optional[Path]:

@@ -35,3 +35,4 @@ class FileList:
     rows: list = field(default_factory=list)      # list[FileRow]
     # 並べ替えたのは先頭から何行か(VBA は A1:E300)。これより後ろは読んだ順のまま
     sorted_rows: int = 0
+    target: str = "files"               # files = ファイルの一覧 / folders = 直下のフォルダの一覧

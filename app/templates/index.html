@@ -37,9 +37,9 @@
       </div>
       <div id="list-notice"></div>
       <div class="scroll">
-        <div class="empty" id="list-empty">フォルダのパスを入れて「ファイル名取得」を押すと、ここにファイルの一覧が出ます。</div>
+        <div class="empty" id="list-empty">フォルダのパスを入れて「ファイル名取得」を押すと、ここにファイルの一覧が出ます。「フォルダ」を選べば、中にあるフォルダの一覧になります。</div>
         <table id="list-table" hidden>
-          <thead><tr><th class="num">#</th><th>文書番号</th><th>名称</th><th>更新日時</th><th>拡張子</th></tr></thead>
+          <thead><tr><th class="num">#</th><th>文書番号</th><th>名称</th><th>更新日時</th><th id="list-th-ext">拡張子</th></tr></thead>
           <tbody id="list-body"></tbody>
         </table>
       </div>
@@ -64,6 +64,13 @@
   <aside class="panel" aria-label="操作">
     <section class="card" aria-labelledby="h-list">
       <h2 id="h-list"><span class="n">1</span>ファイル名取得</h2>
+      <fieldset class="choice" id="list-target">
+        <legend>一覧にするもの</legend>
+        <div class="opts">
+          <label><input type="radio" name="list-target" value="files" checked>ファイル</label>
+          <label><input type="radio" name="list-target" value="folders">フォルダ</label>
+        </div>
+      </fieldset>
       <div class="field">
         <label for="list-folder">フォルダのパス</label>
         <input type="text" id="list-folder" autocomplete="off" spellcheck="false" placeholder="C:\… または \\サーバ\…">
@@ -75,7 +82,7 @@
         <button type="button" class="btn copy wide" id="btn-copy" disabled title="表示中の一覧をコピーします。Excel に貼ると列に分かれます">一覧をコピー</button>
         <button type="button" class="btn copy wide" id="btn-print" disabled title="表示中の一覧を印刷します(A4 縦)">一覧を印刷</button>
       </div>
-      <p class="help">パスはエクスプローラーのアドレス欄からコピーして貼り付けられます(「パスのコピー」で付く " はそのままで大丈夫です)。「一覧をコピー」で表示中の一覧をコピーでき、Excel に貼ると 文書番号・名称・更新日時・拡張子 の列に分かれます(見出し行つき。6-1 などが日付に変わらないよう文字のまま貼られます)。「一覧を印刷」は表示中の一覧を A4 縦で印刷します(見出し行は各ページに付きます)。</p>
+      <p class="help">「フォルダ」を選ぶと、そのフォルダの直下にあるフォルダの一覧になります(文書番号・名称・更新日時。拡張子の列はありません)。パスはエクスプローラーのアドレス欄からコピーして貼り付けられます(「パスのコピー」で付く " はそのままで大丈夫です)。「一覧をコピー」で表示中の一覧をコピーでき、Excel に貼ると 文書番号・名称・更新日時・拡張子 の列に分かれます(見出し行つき。6-1 などが日付に変わらないよう文字のまま貼られます)。「一覧を印刷」は表示中の一覧を A4 縦で印刷します(見出し行は各ページに付きます)。</p>
       <div class="status" id="list-status" aria-live="polite"></div>
     </section>
 

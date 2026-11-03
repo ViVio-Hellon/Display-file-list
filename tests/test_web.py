@@ -88,6 +88,25 @@ class WebTest(unittest.TestCase):
         _, state = self.call("GET", "/api/state")
         self.assertEqual(state["list_dir"], str(self.base / "A班"))
 
+    def test_folderlist(self):
+        """選択ボタンで「フォルダ」(VER1.7.0)。直下のフォルダの一覧。選んだものも覚える。"""
+        (self.base / "A班" / "6-1_梱包").mkdir(parents=True)
+        (self.base / "A班" / "6-1_手順.pdf").write_text("x", encoding="utf-8")
+        _, state = self.call("GET", "/api/state")
+        self.assertEqual(state["list_target"], "files")                  # 初めはファイル(VBA どおり)
+        status, data = self.call("GET", "/api/filelist?target=folders&folder=" + self.q(self.base / "A班"))
+        self.assertEqual(status, 200)
+        self.assertEqual(data["target"], "folders")
+        self.assertEqual([(r["doc_no"], r["title"], r["ext"]) for r in data["rows"]], [("6-1", "梱包", "")])
+        _, state = self.call("GET", "/api/state")
+        self.assertEqual(state["list_target"], "folders")
+        status, data = self.call("GET", "/api/filelist?target=files&folder=" + self.q(self.base / "A班"))
+        self.assertEqual([r["file_name"] for r in data["rows"]], ["6-1_手順.pdf"])
+
+    def test_filelist_bad_target(self):
+        status, data = self.call("GET", "/api/filelist?target=both&folder=" + self.q(self.base))
+        self.assertEqual((status, data["error"]["code"]), (422, "bad_target"))
+
     def test_filelist_missing_folder(self):
         status, data = self.call("GET", "/api/filelist?folder=" + self.q(self.base / "B班"))
         self.assertEqual(status, 422)

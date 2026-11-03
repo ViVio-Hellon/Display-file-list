@@ -12,5 +12,7 @@ const out = {
   tsv: buildTsv(rows),
   tsvNoHeader: buildTsv(rows, { header: false }),
   html: buildHtml(rows),
+  folderTsv: buildTsv(rows, { target: "folders" }),
+  folderHtml: buildHtml(rows, { target: "folders" }),
 };
 console.log(JSON.stringify(out));

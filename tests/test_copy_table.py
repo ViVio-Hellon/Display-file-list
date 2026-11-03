@@ -35,6 +35,18 @@ class CopyTableTest(unittest.TestCase):
         self.assertEqual(html.count("<tr>"), 5)                                   # 見出し + 4行
         self.assertIn("<th>文書番号</th><th>名称</th><th>更新日時</th><th>拡張子</th>", html)
 
+    def test_folder_list_has_no_extension_column(self):
+        """フォルダの一覧(VER1.7.0)は 文書番号 / 名称 / 更新日時 の3列。"""
+        lines = self.data["folderTsv"].split("\r\n")
+        self.assertEqual(lines[0], "文書番号\t名称\t更新日時")
+        self.assertEqual(lines[1], "6-1\t梱包手順書\t2026/10/15 14:56")
+        self.assertTrue(all(len(line.split("\t")) == 3 for line in lines if line))
+        html = self.data["folderHtml"]
+        self.assertIn("<th>文書番号</th><th>名称</th><th>更新日時</th></tr>", html)
+        self.assertNotIn("拡張子", html)
+        self.assertEqual(html.count("<td"), 3 * 4)
+        self.assertIn('<td style="mso-number-format:\'\\@\'">6-1</td>', html)
+
 
 if __name__ == "__main__":
     unittest.main()

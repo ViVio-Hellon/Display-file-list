@@ -36,6 +36,14 @@ Web 版では**フォルダのパスを直接打つ**(2026-10-16 の指示。VER
   `strict_vba=True` にすると直す前の VBA と同じに戻る(VBA の結果と突き合わせる
   `scripts/compare_with_vba.py` が使う)。
 
+■ フォルダの一覧(VER1.7.0。VBA には無い。指示: 選択ボタンを付けてフォルダの一覧も取れるように)
+
+  指定したフォルダの**直下のフォルダ**(隠しも含む。その下は見ない)を同じ表にする。
+    文書番号 = 最初の `_` より前 / 名称 = 後ろ全部(`_` が無ければ名前全体・文書番号は空欄)
+    並べ替えキー・並べ替え(先頭 300 件・空欄は後ろ)はファイルと同じ
+  ファイルと違い **`.` では分けない**(拡張子が無い。`99.生産管理課 土曜日出勤者` を
+  名称「99」と読まないように)。拡張子の欄は無い。
+
 ■ 並べ替え(VBA `Range("A1:E300").Sort Key1:=A, xlAscending`)
 
   - **先頭 300 行だけ**を並べる。301 行目以降は読んだ順のまま(VBA どおり。移植計画 Q4)
@@ -57,6 +65,12 @@ from . import vba_compat
 SORT_LIMIT_ROWS = 300
 
 NOTE_TAIL_EMPTY = "「_」の後ろに名前がないため、名称と拡張子は空欄です"
+NOTE_FOLDER_TAIL_EMPTY = "「_」の後ろに名前がないため、名称は空欄です"
+
+# 一覧にするもの(画面の選択ボタン)
+TARGET_FILES = "files"
+TARGET_FOLDERS = "folders"
+TARGETS = (TARGET_FILES, TARGET_FOLDERS)
 
 
 class VbaWouldStop(Exception):
@@ -96,6 +110,20 @@ def _parse_with_underscore(head: str, tail: str) -> ParsedName:
     return parsed
 
 
+def parse_folder_name(name: str) -> ParsedName:
+    """フォルダの名前 → 1行。最初の `_` で分けるだけ(`.` では分けない)。"""
+    if "_" not in name:
+        return ParsedName(title=name)
+    head, tail = name.split("_", 1)
+    parsed = ParsedName(doc_no=head, title=tail)
+    if head != "":
+        key = vba_compat.val(head.split("-")[0])
+        parsed.sort_key = None if key == 0 else key
+    if tail == "":
+        parsed.note = NOTE_FOLDER_TAIL_EMPTY
+    return parsed
+
+
 def _parse_without_underscore(file_name: str) -> ParsedName:
     pos = file_name.rfind(".")                       # VBA InStrRev(…, ".")。無ければ 0
     ext = file_name[pos + 1:] if pos >= 0 else file_name
@@ -122,16 +150,32 @@ def build_rows(entries: Iterable, *, strict_vba: bool = False) -> list:
     return sort_rows(rows)
 
 
+def build_folder_rows(entries: Iterable) -> list:
+    """`(フォルダ名, 更新日時)` を読んだ順に受け取り、並べ替えた行を返す。"""
+    rows = [FileRow(file_name=name, modified=modified, parsed=parse_folder_name(name))
+            for name, modified in entries]
+    return sort_rows(rows)
+
+
 # ------------------------------------------------------------------
 # フォルダを読む
 # ------------------------------------------------------------------
 def scan_files(folder: Path) -> list:
     """フォルダ直下のファイル(読んだ順)。`[(名前, 更新日時)]`"""
+    return _scan(folder, folders=False)
+
+
+def scan_folders(folder: Path) -> list:
+    """フォルダ直下のフォルダ(読んだ順)。`[(名前, 更新日時)]`"""
+    return _scan(folder, folders=True)
+
+
+def _scan(folder: Path, *, folders: bool) -> list:
     entries = []
     with os.scandir(folder) as it:                   # 開いたままにしない
         for entry in it:
             try:
-                if not entry.is_file():
+                if not (entry.is_dir() if folders else entry.is_file()):
                     continue
                 mtime = entry.stat().st_mtime
             except OSError:
@@ -142,12 +186,20 @@ def scan_files(folder: Path) -> list:
 
 
 def list_folder(folder: Path, *, strict_vba: bool = False,
-                now: Optional[datetime] = None) -> FileList:
-    """フォルダは呼ぶ側で確かめておく(`folder_input.parse`)。"""
-    rows = build_rows(scan_files(folder), strict_vba=strict_vba)
+                now: Optional[datetime] = None, target: str = TARGET_FILES) -> FileList:
+    """フォルダは呼ぶ側で確かめておく(`folder_input.parse`)。
+
+    `target` … `files`(ファイルの一覧。VBA どおり)/ `folders`(直下のフォルダの一覧)
+    """
+    if target not in TARGETS:
+        raise ValueError(target)
+    if target == TARGET_FOLDERS:
+        rows = build_folder_rows(scan_folders(folder))
+    else:
+        rows = build_rows(scan_files(folder), strict_vba=strict_vba)
     return FileList(folder=str(folder), title=folder.name or str(folder),
                     fetched_at=now or datetime.now().replace(microsecond=0),
-                    rows=rows, sorted_rows=min(len(rows), SORT_LIMIT_ROWS))
+                    rows=rows, sorted_rows=min(len(rows), SORT_LIMIT_ROWS), target=target)
 
 
 # ------------------------------------------------------------------
@@ -179,6 +231,7 @@ def to_dict(result: FileList) -> dict:
                     f"残りの {unsorted} 件は読んだ順です)")
     return {
         "folder": result.folder,
+        "target": result.target,
         "title": result.title,
         "fetched_at": result.fetched_at.strftime("%Y/%m/%d %H:%M:%S"),
         "count": total,
