@@ -43,6 +43,9 @@ class LockInfo:
     # stop.bat が「正常終了を頼む」ために要る。ロックは利用者ごとのローカル領域にあり、
     # 読めるのは同じ利用者だけ(その相手はプロセスを直接止められる)
     token: str = ""
+    # このプロセスが起動した時刻(VER1.7.1)。PID は使い回されるので、番号と起動時刻の
+    # 両方が合うときだけ「前回のツールが居る」とする。前の版のロックには無い(0)
+    proc_started: float = 0.0
 
     @property
     def url(self) -> str:
@@ -106,7 +109,8 @@ def try_acquire() -> bool:
 def build_lock_info(port: int, token: str = "") -> LockInfo:
     return LockInfo(app_id=config.app_id(), pid=os.getpid(), port=port,
                     started_at=time.time(), python=sys.executable,
-                    app_root=str(config.BASE_DIR), token=token)
+                    app_root=str(config.BASE_DIR), token=token,
+                    proc_started=process_start_time(os.getpid()) or 0.0)
 
 
 # ------------------------------------------------------------------
@@ -115,8 +119,13 @@ def build_lock_info(port: int, token: str = "") -> LockInfo:
 # プロセスの道具(生きているか・起動コマンド・プロキシを通さない要求・応答の確認)は
 # **process_manager.py の1か所に置く。** 止める入口は、ほかの部品が欠けていても
 # 動かす必要があるので、標準ライブラリだけで書いてあちらに持たせている
-from process_manager import (is_process_alive, local_request,  # noqa: E402,F401
-                             probe_health, process_command_line)
+from process_manager import (CLEANED_MESSAGE, confirm_ours,  # noqa: E402,F401
+                             is_process_alive, kill_process, local_request,
+                             lock_owner_status, probe_health, process_command_line,
+                             process_start_time)
+
+HUNG_WAIT_SEC = 5.0          # 前回のツールが居るのに応答しないとき、待つ長さ
+KILL_WAIT_SEC = 8.0          # 止めてから居なくなるまで
 
 
 def is_our_app(health: Optional[dict]) -> bool:
@@ -167,17 +176,41 @@ def check_existing() -> GuardResult:
         return _wait_for_starting(info)
     if is_our_app(probe_health(info.port)):
         return GuardResult(True, info.url, "すでに起動しています")
+    owner, reason = lock_owner_status(asdict(info))
+    if not owner:
+        # PC の再起動などで残ったロック。番号を使い回している別のプログラムには触らない(VER1.7.1)
+        log.info("残っていたロックを片付けます: %s", reason)
+        remove_lock()
+        return GuardResult(False)
+    # 前回のツールが本当に居るのに応答しない。起動の直後か、固まっている。少しだけ待つ
+    deadline = time.time() + HUNG_WAIT_SEC
+    while time.time() < deadline:
+        if is_our_app(probe_health(info.port)):
+            return GuardResult(True, info.url, "すでに起動しています")
+        time.sleep(0.5)
+    return _replace_hung(info, reason)
+
+
+def _replace_hung(info: LockInfo, reason: str) -> GuardResult:
+    """応答しない前回のツールを終わらせて、起動し直す(VER1.7.1)。"""
+    if not confirm_ours(asdict(info)):
+        log.warning("応答しない pid=%s がこのアプリか確かめられないので止めません", info.pid)
+        return GuardResult(True, "", f"前の起動(pid {info.pid})が応答しません。"
+                                     "stop.bat で止めてから、もう一度起動してください")
+    log.warning("前回のツールが %.0f 秒たっても応答しません(%s)。終わらせて起動し直します",
+                HUNG_WAIT_SEC, reason)
+    try:
+        kill_process(info.pid)
+    except Exception as exc:                          # noqa: BLE001
+        log.warning("止められませんでした: %s", exc)
+    deadline = time.time() + KILL_WAIT_SEC
+    while time.time() < deadline and is_process_alive(info.pid):
+        time.sleep(0.3)
     if is_process_alive(info.pid):
-        # 生きているのに応答しない。起動の直後か、固まっている。少しだけ待つ
-        deadline = time.time() + 5
-        while time.time() < deadline:
-            if is_our_app(probe_health(info.port)):
-                return GuardResult(True, info.url, "すでに起動しています")
-            time.sleep(0.5)
-        return GuardResult(True, info.url,
-                           "前の起動が応答していません。stop.bat で止めてから、もう一度起動してください")
-    log.info("残っていたロックを片付けます(pid=%s はもう居ません)", info.pid)
-    remove_lock()
+        return GuardResult(True, "", f"前の起動(pid {info.pid})が応答せず、止められませんでした。"
+                                     "タスクマネージャーの「詳細」で、この番号の python / pythonw を終了してください")
+    log.info("前回のツールを終わらせました。%s", CLEANED_MESSAGE)
+    remove_lock(pid=info.pid)
     return GuardResult(False)
 
 
@@ -189,11 +222,13 @@ def _wait_for_starting(info: LockInfo) -> GuardResult:
             return GuardResult(False)
         if current.port != STARTING_PORT:
             return check_existing()
-        if not is_process_alive(current.pid):
+        owner, reason = lock_owner_status(asdict(current))
+        if not owner:
+            log.info("起動途中のまま残っていたロックを片付けます: %s", reason)
             remove_lock()
             return GuardResult(False)
         time.sleep(0.3)
-    if is_process_alive(info.pid):
+    if lock_owner_status(asdict(info))[0]:
         return GuardResult(True, "", "前の起動がまだ終わっていません。少し待ってからもう一度起動してください")
     remove_lock()
     return GuardResult(False)

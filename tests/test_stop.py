@@ -76,7 +76,8 @@ class StopConfirmsTest(unittest.TestCase):
             p.start()
             self.addCleanup(p.stop)
 
-    def run_stop(self, *, answers, shutdown, alive, ours=True, kill_works=True, force=False):
+    def run_stop(self, *, answers, shutdown, alive, ours=True, kill_works=True, force=False, owner=True):
+        """owner=False: 番号は居るが、ロックを書いた本人ではない(PID の使い回し。VER1.7.1)。"""
         state = {"alive": alive, "answers": answers}
 
         def kill(pid):
@@ -94,7 +95,9 @@ class StopConfirmsTest(unittest.TestCase):
         with mock.patch.object(pm, "_answers", side_effect=lambda info: state["answers"]), \
                 mock.patch.object(pm, "_request_shutdown", side_effect=ask), \
                 mock.patch.object(pm, "is_process_alive", side_effect=lambda pid: state["alive"]), \
-                mock.patch.object(pm, "looks_like_ours", return_value=ours), \
+                mock.patch.object(pm, "lock_owner_status",
+                                  side_effect=lambda info: (state["alive"] and owner, "理由")), \
+                mock.patch.object(pm, "confirm_ours", return_value=ours), \
                 mock.patch.object(pm, "kill_process", side_effect=kill) as killer:
             code, message = pm.stop(force=force)
         return code, message, killer
@@ -140,6 +143,15 @@ class StopConfirmsTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("--force", message)
         killer.assert_not_called()
+
+    def test_reused_pid_lock_is_cleaned_without_touching_the_other_program(self):
+        """PC の再起動のあと、別のプログラムが同じ番号を持っていた。これまでは「接続できない」で
+        終わり、ロックを消していなかった(実際に何もしていなかった)。"""
+        code, message, killer = self.run_stop(answers=False, shutdown={}, alive=True, owner=False)
+        self.assertEqual(code, 0)
+        self.assertIn("片付けました。Start.vbs で起動できます", message)
+        killer.assert_not_called()
+        pm.remove_lock.assert_called_once_with(pid=424242)
 
     def test_already_gone(self):
         code, message, _ = self.run_stop(answers=False, shutdown={}, alive=False)

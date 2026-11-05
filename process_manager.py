@@ -5,6 +5,9 @@
    そのプロセスがこのアプリ(起動コマンドに start_app.py とこのフォルダ)か確かめる**
 3. **止まったかは PID が居なくなったことで確かめる。** 確かめられなければ「止まらなかった」と言う
 4. Python をプロセス名だけで一括終了することはしない
+5. **ロックの PID が、ロックを書いた本人かを起動時刻で確かめる**(VER1.7.1)。Windows は PID を
+   使い回すので、PC を再起動したあと別のプログラムが同じ番号を持つことがある。本人でなければ
+   ロックは残りものなので片付ける(そのプログラムには触らない)。`lock_owner_alive()`
 
     python process_manager.py            止める
     python process_manager.py --force    リネームの途中でも止める
@@ -145,6 +148,115 @@ def process_command_line(pid: int) -> str:
         return ""
 
 
+# PID の使い回し(VER1.7.1) ----------------------------------------------
+# ロックには、書いたプロセスが**起動した時刻**(proc_started)も書く。番号と起動時刻の両方が
+# 合うときだけ「ロックを書いた本人が居る」とする。起動時刻の測り方の誤差(Linux は秒単位)を見込む
+START_TIME_TOLERANCE_SEC = 2.0
+
+
+def process_start_time(pid: int) -> Optional[float]:
+    """そのプロセスが起動した時刻(エポック秒)。取れなければ None。標準ライブラリだけ。"""
+    if pid <= 0:
+        return None
+    if sys.platform.startswith("win"):
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.windll.kernel32                     # type: ignore[attr-defined]
+        handle = kernel32.OpenProcess(0x1000, False, pid)     # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return None
+        try:
+            times = [wintypes.FILETIME() for _ in range(4)]   # 作成・終了・カーネル・ユーザー
+            if not kernel32.GetProcessTimes(handle, *[ctypes.byref(t) for t in times]):
+                return None
+            ticks = (times[0].dwHighDateTime << 32) | times[0].dwLowDateTime   # 1601年からの 100ns
+            return ticks / 1e7 - 11644473600.0
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text()
+        start_ticks = int(stat[stat.rindex(")") + 2:].split()[19])   # 22 番目の欄 starttime
+        for line in Path("/proc/stat").read_text().splitlines():
+            if line.startswith("btime "):
+                return int(line.split()[1]) + start_ticks / os.sysconf("SC_CLK_TCK")
+    except (OSError, ValueError, IndexError):
+        pass
+    return None
+
+
+def _lock_written_at(info: dict) -> Optional[float]:
+    """ロックを書いた時刻。前の版のロック(起動時刻なし)の判断に使う。"""
+    try:
+        written = float(info.get("started_at") or 0)
+    except (TypeError, ValueError):
+        written = 0.0
+    if written > 0:
+        return written
+    try:
+        return lock_path().stat().st_mtime
+    except OSError:
+        return None
+
+
+def lock_owner_status(info: dict) -> tuple:
+    """(ロックを書いた本人が居るか, 理由)。
+
+    - 番号のプロセスが居ない → 居ない
+    - ロックに起動時刻がある → 番号と起動時刻の両方が合うときだけ本人
+    - 前の版のロック(起動時刻なし)→ **ロックを書いた時刻より後に起動したプロセスは本人ではない**
+    - 起動時刻が取れない → 起動コマンドで確かめる(取れなければ、これまでどおり本人とみなす)
+    """
+    pid = int(info.get("pid") or 0)
+    if not is_process_alive(pid):
+        return False, f"pid {pid} はもう居ません"
+    actual = process_start_time(pid)
+    if actual is None:
+        if process_command_line(pid) and not looks_like_ours(info):
+            return False, f"pid {pid} は別のプログラムです(起動コマンドが違う)"
+        return True, f"pid {pid} が居ます(起動時刻は取れませんでした)"
+    try:
+        recorded = float(info.get("proc_started") or 0)
+    except (TypeError, ValueError):
+        recorded = 0.0
+    if recorded > 0:
+        if abs(actual - recorded) <= START_TIME_TOLERANCE_SEC:
+            return True, f"pid {pid} は前回のツールです(起動時刻が合う)"
+        return False, (f"pid {pid} は別のプログラムです(起動時刻が違う: "
+                       f"記録 {_stamp(recorded)} / 実際 {_stamp(actual)}。PC の再起動で番号が使い回された)")
+    written = _lock_written_at(info)
+    if written is not None and actual > written + START_TIME_TOLERANCE_SEC:
+        return False, (f"pid {pid} は別のプログラムです(ロックを書いた {_stamp(written)} より後の "
+                       f"{_stamp(actual)} に起動した。PC の再起動で番号が使い回された)")
+    return True, f"pid {pid} が居ます(前の版のロック。ロックより前に起動している)"
+
+
+def lock_owner_alive(info: dict) -> bool:
+    return lock_owner_status(info)[0]
+
+
+def _stamp(epoch: float) -> str:
+    try:
+        return datetime.fromtimestamp(epoch).strftime("%m/%d %H:%M:%S")
+    except (OverflowError, OSError, ValueError):
+        return str(epoch)
+
+
+def confirm_ours(info: dict) -> bool:
+    """PID で止めてよいか。起動コマンドが取れればそれで、取れなければ記録した起動時刻で確かめる。"""
+    pid = int(info.get("pid") or 0)
+    if process_command_line(pid):
+        return looks_like_ours(info)
+    try:
+        recorded = float(info.get("proc_started") or 0)
+    except (TypeError, ValueError):
+        return False
+    actual = process_start_time(pid)
+    return recorded > 0 and actual is not None and abs(actual - recorded) <= START_TIME_TOLERANCE_SEC
+
+
+CLEANED_MESSAGE = "片付けました。Start.vbs で起動できます"
+
+
 def kill_process(pid: int) -> None:
     """PID で止める。Windows は子ごと(/T)。"""
     if sys.platform.startswith("win"):
@@ -241,11 +353,14 @@ def stop(force: bool = False) -> tuple:
         else:
             write_launcher_log(f"停止の要求が通りませんでした({asked})。PID で止めます")
 
-    if not is_process_alive(pid):
+    owner, reason = lock_owner_status(info)
+    if not owner:
+        # 残りもののロック。番号を使い回している別のプログラムには触らない(VER1.7.1)
+        write_launcher_log(f"残っていたロックを片付けます: {reason}")
         remove_lock(pid=pid)
-        return 0, "動いていませんでした(残っていたロックを片付けました)"
+        return 0, f"動いていませんでした({reason})。残っていたロックを{CLEANED_MESSAGE}"
 
-    if not looks_like_ours(info):
+    if not confirm_ours(info):
         write_launcher_log(f"pid={pid} の照合に失敗したため止めません")
         return 1, (f"pid {pid} はこのアプリではないようなので止めません。\n"
                    f"    ロック: {lock_path()}")
@@ -275,7 +390,7 @@ def main(argv=None) -> int:
             print(f"動いています: http://127.0.0.1:{info.get('port')}/ "
                   f"(pid {info.get('pid')}, 版 {health.get('version')})")
             return 0
-        if info and is_process_alive(int(info.get("pid") or 0)):
+        if info and lock_owner_alive(info):
             print(f"応答していませんが、pid {info.get('pid')} が残っています(stop.bat で止められます)")
             return 0
         print("動いていません")
