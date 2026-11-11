@@ -5,6 +5,8 @@
    そのプロセスがこのアプリ(起動コマンドに start_app.py とこのフォルダ)か確かめる**
 3. **止まったかは PID が居なくなったことで確かめる。** 確かめられなければ「止まらなかった」と言う
 4. Python をプロセス名だけで一括終了することはしない
+6. **デスクトップ版(exe の窓)も止める**(VER2.0.0)。窓に「閉じて」と頼む(窓の × と同じ。
+   リネームの途中なら窓に理由を出して閉じない → 2 を返す)。`--force` なら窓とその子(Python)をまとめて止める
 5. **ロックの PID が、ロックを書いた本人かを起動時刻で確かめる**(VER1.7.1)。Windows は PID を
    使い回すので、PC を再起動したあと別のプログラムが同じ番号を持つことがある。本人でなければ
    ロックは残りものなので片付ける(そのプログラムには触らない)。`lock_owner_alive()`
@@ -87,6 +89,88 @@ def remove_lock(pid: Optional[int] = None) -> None:
         lock_path().unlink()
     except OSError:
         pass
+
+
+# ------------------------------------------------------------------
+# デスクトップ版の印(VER2.0.0)
+# ------------------------------------------------------------------
+# デスクトップ版(exe の窓)の Python(bridge.py)が動いているあいだ置く。ブラウザ版の起動と
+# stop.bat がこれを見る。2つ目の exe を止めるのは exe が握る OS のロック(runtime\desktop.lock)で、
+# そちらは外から確かめない(確かめるには一瞬でも取ることになり、ちょうど起動した exe が
+# 「もう動いている」と見て黙って終わる)。名前を .lock にしないのは instance.lock と取り違えないため
+DESKTOP_MARKER = "desktop.json"
+
+
+def desktop_marker_path() -> Path:
+    return local_root() / "runtime" / DESKTOP_MARKER
+
+
+def read_desktop_marker() -> Optional[dict]:
+    try:
+        data = json.loads(desktop_marker_path().read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def write_desktop_marker(app_id: str, exe_pid: int) -> dict:
+    """デスクトップ版の Python が動き始めた。書けなくても起動は止めない。"""
+    me = os.getpid()
+    data = {"app_id": app_id, "pid": me, "proc_started": process_start_time(me) or 0.0,
+            "exe_pid": exe_pid, "exe_started": process_start_time(exe_pid) or 0.0,
+            "started_at": time.time(), "app_root": str(BASE_DIR)}
+    path = desktop_marker_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError as exc:
+        write_launcher_log(f"デスクトップ版の印を書けませんでした: {exc}", "launcher.desktop", "WARNING")
+    return data
+
+
+def remove_desktop_marker(expect: Optional[dict] = None) -> None:
+    """自分の印だけ消す。`expect` を渡すと、その印(pid と書いた時刻が同じ)のときだけ消す(残りものの片付け)。"""
+    raw = read_desktop_marker()
+    if raw is None:
+        return
+    if expect is None:
+        mine = int(raw.get("pid") or 0) == os.getpid()
+    else:
+        mine = (int(raw.get("pid") or 0) == int(expect.get("pid") or 0)
+                and raw.get("started_at") == expect.get("started_at"))
+    if mine:
+        try:
+            desktop_marker_path().unlink()
+        except OSError:
+            pass
+
+
+def desktop_status(raw: Optional[dict] = None) -> tuple:
+    """(デスクトップ版が動いているか, 印, 理由)。番号の使い回しを取り違えない(VER1.7.1 と同じ考え)。"""
+    raw = read_desktop_marker() if raw is None else raw
+    if not raw:
+        return False, None, "印がありません"
+    pid = int(raw.get("pid") or 0)
+    if not is_process_alive(pid):
+        return False, raw, f"pid {pid} はもう居ません"
+    actual = process_start_time(pid)
+    try:
+        recorded = float(raw.get("proc_started") or 0)
+    except (TypeError, ValueError):
+        recorded = 0.0
+    if actual is not None and recorded > 0 and abs(actual - recorded) > START_TIME_TOLERANCE_SEC:
+        return False, raw, f"pid {pid} は別のプログラムです(起動時刻が違う)"
+    command = process_command_line(pid)
+    if command and "bridge.py" not in command:
+        return False, raw, f"pid {pid} は別のプログラムです(起動コマンドが違う)"
+    return True, raw, f"デスクトップ版が動いています(pid {pid})"
+
+
+def desktop_running() -> Optional[dict]:
+    alive, raw, _ = desktop_status()
+    return raw if alive else None
 
 
 def write_launcher_log(message: str, source: str = "launcher.stop", level: str = "INFO") -> None:
@@ -329,10 +413,99 @@ def _wait(predicate: Callable[[], bool], timeout: float) -> bool:
 
 
 # ------------------------------------------------------------------
+# デスクトップ版を止める(VER2.0.0)
+# ------------------------------------------------------------------
+DESKTOP_CLOSE_WAIT_SEC = 12.0    # 窓に頼んでから Python が居なくなるまで
+
+
+def _close_windows_of(pid: int) -> int:
+    """そのプロセスの**見えている最上位の窓**に WM_CLOSE を送る(窓の × と同じ)。送った数。
+
+    Windows 以外(開発機の Linux)では、窓の代わりに exe へ SIGTERM を送る。
+    """
+    if pid <= 0:
+        return 0
+    if not sys.platform.startswith("win"):
+        try:
+            os.kill(pid, signal.SIGTERM)
+            return 1
+        except OSError:
+            return 0
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32                                  # type: ignore[attr-defined]
+    found = []
+    proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def each(hwnd, _):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd) and not user32.GetWindow(hwnd, 4):
+            found.append(hwnd)                                     # 4 = GW_OWNER(持ち主のいる窓は除く)
+        return True
+
+    user32.EnumWindows(proc(each), 0)
+    return sum(1 for hwnd in found if user32.PostMessageW(hwnd, 0x0010, 0, 0))   # WM_CLOSE
+
+
+def _exe_is_desktop(raw: dict) -> bool:
+    """印の exe(窓)がまだ同じものか。窓は Python より先に起動しているので、印より後に起動したものは違う。"""
+    exe = int(raw.get("exe_pid") or 0)
+    if not is_process_alive(exe):
+        return False
+    actual = process_start_time(exe)
+    if actual is None:
+        return True
+    try:
+        recorded = float(raw.get("exe_started") or 0)
+    except (TypeError, ValueError):
+        recorded = 0.0
+    if recorded > 0:
+        return abs(actual - recorded) <= START_TIME_TOLERANCE_SEC
+    return actual <= float(raw.get("started_at") or 0) + START_TIME_TOLERANCE_SEC
+
+
+def stop_desktop(raw: dict, force: bool = False) -> tuple:
+    """(戻り値, 文言)。**Python が居なくなったのを確かめてから**「閉じた」と言う。"""
+    pid = int(raw.get("pid") or 0)
+    exe = int(raw.get("exe_pid") or 0) if _exe_is_desktop(raw) else 0
+    gone = lambda: not is_process_alive(pid)                       # noqa: E731
+    if force:
+        write_launcher_log(f"デスクトップ版をまとめて止めます(exe {exe} / python {pid})")
+        try:
+            kill_process(exe or pid)
+        except (OSError, subprocess.SubprocessError) as exc:
+            return 1, f"デスクトップ版を止められませんでした: {exc}"
+        if _wait(gone, KILL_WAIT_SEC):
+            remove_desktop_marker(expect=raw)
+            return 0, "デスクトップ版を止めました"
+        return 1, f"デスクトップ版が止まりませんでした(pid {pid})"
+    if not exe or not _close_windows_of(exe):
+        return 1, ("デスクトップ版の窓が見つかりませんでした"
+                   f"(python pid {pid})。--force を付けると止められます")
+    write_launcher_log(f"デスクトップ版の窓に閉じるよう頼みました(exe {exe})")
+    if _wait(gone, DESKTOP_CLOSE_WAIT_SEC):
+        remove_desktop_marker(expect=raw)
+        return 0, "デスクトップ版の窓を閉じました"
+    return 2, ("デスクトップ版は処理の途中なので閉じませんでした(窓に理由を出しました)。"
+               "\n    中断してよければ --force を付けてください")
+
+
+# ------------------------------------------------------------------
 # 止める
 # ------------------------------------------------------------------
 def stop(force: bool = False) -> tuple:
     """(戻り値, 文言)。**PID が居なくなったのを確かめてから**「終わった」と言う。"""
+    alive, raw, reason = desktop_status()
+    if alive:
+        return stop_desktop(raw, force)
+    if raw is not None:
+        write_launcher_log(f"残っていたデスクトップ版の印を片付けます: {reason}")
+        remove_desktop_marker(expect=raw)
+    return _stop_browser(force)
+
+
+def _stop_browser(force: bool = False) -> tuple:
     info = read_lock()
     if info is None:
         return 0, "起動していません"
@@ -384,6 +557,10 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.status:
+        desktop = desktop_running()
+        if desktop:
+            print(f"デスクトップ版が動いています(python pid {desktop.get('pid')} / exe pid {desktop.get('exe_pid')})")
+            return 0
         info = read_lock()
         if info and _answers(info):
             health = probe_health(int(info.get("port") or 0)) or {}

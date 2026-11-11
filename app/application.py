@@ -41,6 +41,9 @@ READY_EXEMPT_PATHS = frozenset({"/", "/loading", "/api/health", "/api/alive",
                                 "/api/bye", "/api/shutdown"})
 
 
+# デスクトップ版の窓が画面を読む宛先の名前(src-tauri/src/main.rs の origin() と揃える)
+DESKTOP_HOSTS = ("app.localhost", "localhost")
+
 _current = threading.local()
 
 
@@ -136,8 +139,10 @@ class AppState:
 
 class App:
     def __init__(self, *, port: int, token: Optional[str] = None,
-                 on_shutdown: Optional[Callable[[], None]] = None) -> None:
+                 on_shutdown: Optional[Callable[[], None]] = None, desktop: bool = False) -> None:
         self.port = port
+        # デスクトップ版(VER2.0.0): 窓(exe)から標準入出力で要求が来る。ポートは使わない
+        self.desktop = desktop
         self.token = token or secrets.token_urlsafe(32)
         self.state = AppState()
         self.on_shutdown = on_shutdown
@@ -149,6 +154,10 @@ class App:
 
     # ------------------------------------------------------------------
     def allowed_hosts(self) -> set:
+        if self.desktop:
+            # 窓が画面を読む宛先の名前(Windows の WebView2 は app.localhost、ほかは app://localhost)。
+            # ネットワークを通らないので、待ち受けの宛先(127.0.0.1:ポート)は受けない
+            return set(DESKTOP_HOSTS)
         return {f"127.0.0.1:{self.port}", f"localhost:{self.port}"}
 
     def handle(self, req: Request) -> Response:
@@ -270,7 +279,7 @@ class App:
         return {"app_id": config.app_id(), "display_name": config.display_name(),
                 "version": config.version(), "ready": self.state.ready,
                 "stage": self.state.stage, "error": self.state.startup_error,
-                "pid": os.getpid(), "port": self.port,
+                "pid": os.getpid(), "port": self.port, "desktop": self.desktop,
                 "started_at": self.state.started_at,
                 "running": self.state.busy_labels()}
 

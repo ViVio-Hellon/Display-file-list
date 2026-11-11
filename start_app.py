@@ -175,21 +175,29 @@ def main(argv=None) -> int:
         return 1
 
     import launch_guard
-    guard = launch_guard.check_existing()
-    if guard.running:
-        log.info("%s。新しく起動せず画面を開きます(%s)", guard.message, guard.url)
-        if guard.url and not args.no_browser:
-            webbrowser.open(guard.url)
-        elif not guard.url:
-            _notify(guard.message)
-        return 0
-    if not launch_guard.try_acquire():
-        # 判定とロックのあいだに別の起動が入った
+    # 判断のあいだだけ門を握る(デスクトップ版がほぼ同時に起動しても、2つとも動き出さない)
+    with launch_guard.startup_gate():
+        # デスクトップ版(exe の窓)が動いていれば起動しない(VER2.0.0。同時には動かさない)
+        desktop = launch_guard.desktop_running()
+        if desktop:
+            log.warning("デスクトップ版が動いているので、ブラウザ版は起動しません(pid %s)", desktop.get("pid"))
+            _notify(launch_guard.DESKTOP_RUNNING_MESSAGE)
+            return 1
         guard = launch_guard.check_existing()
-        log.info("ほかの起動が先にロックを取りました: %s", guard.message)
-        if guard.url and not args.no_browser:
-            webbrowser.open(guard.url)
-        return 0
+        if guard.running:
+            log.info("%s。新しく起動せず画面を開きます(%s)", guard.message, guard.url)
+            if guard.url and not args.no_browser:
+                webbrowser.open(guard.url)
+            elif not guard.url:
+                _notify(guard.message)
+            return 0
+        if not launch_guard.try_acquire():
+            # 判定とロックのあいだに別の起動が入った
+            guard = launch_guard.check_existing()
+            log.info("ほかの起動が先にロックを取りました: %s", guard.message)
+            if guard.url and not args.no_browser:
+                webbrowser.open(guard.url)
+            return 0
 
     try:
         return _serve(args, log, t0)

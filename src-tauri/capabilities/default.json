@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "業務画面(Python が返す画面)は外枠の命令を呼ばない。窓の × ・終了・静的ファイルはすべて外枠の中で済む",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

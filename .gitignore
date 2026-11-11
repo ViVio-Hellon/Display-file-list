@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# 配布用のフォルダ・取ってきた exe(scripts/make_dist.py)
+/dist/
+/FileListTool.exe

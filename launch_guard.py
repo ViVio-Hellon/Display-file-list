@@ -20,6 +20,7 @@ import os
 import socket
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
@@ -124,6 +125,10 @@ from process_manager import (CLEANED_MESSAGE, confirm_ours,  # noqa: E402,F401
                              lock_owner_status, probe_health, process_command_line,
                              process_start_time)
 
+from process_manager import (desktop_running, desktop_status,  # noqa: E402,F401
+                             read_desktop_marker, remove_desktop_marker,
+                             write_desktop_marker)
+
 HUNG_WAIT_SEC = 5.0          # 前回のツールが居るのに応答しないとき、待つ長さ
 KILL_WAIT_SEC = 8.0          # 止めてから居なくなるまで
 
@@ -151,6 +156,73 @@ def pick_port() -> Optional[int]:
             return port
         log.info("ポート %s は使われています", port)
     return None
+
+
+# ------------------------------------------------------------------
+# 起動の判断の門(VER2.0.0)
+# ------------------------------------------------------------------
+GATE_WAIT_SEC = 30.0
+
+
+@contextmanager
+def startup_gate(timeout: float = GATE_WAIT_SEC):
+    """**判断のあいだだけ**握る短い錠。ブラウザ版とデスクトップ版がほぼ同時に起動しても、
+    両方が「相手は居ない」と見て2つとも動き出すことが無いようにする(coil-packing-tools と同じ)。
+
+    OS のファイルロックなので、落ちても残らない。取れないまま `timeout` が過ぎたら、
+    錠なしで進む(起動できなくなるよりよい。記録は残す)。
+    """
+    path = config.local_dir("runtime") / "startup.gate"
+    fh = open(path, "a+b")
+    held = False
+    deadline = time.time() + timeout
+    try:
+        while True:
+            try:
+                _lock_file(fh)
+                held = True
+                break
+            except OSError:
+                if time.time() >= deadline:
+                    log.warning("起動の門を %.0f 秒待っても取れませんでした。錠なしで進みます", timeout)
+                    break
+                time.sleep(0.1)
+        yield
+    finally:
+        if held:
+            try:
+                _unlock_file(fh)
+            except OSError:
+                pass
+        fh.close()
+
+
+def _lock_file(fh) -> None:
+    if sys.platform.startswith("win"):
+        import msvcrt
+        fh.seek(0)
+        msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock_file(fh) -> None:
+    if sys.platform.startswith("win"):
+        import msvcrt
+        fh.seek(0)
+        msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+
+DESKTOP_RUNNING_MESSAGE = ("デスクトップ版のファイル名一覧取得が動いています。\n"
+                           "ブラウザ版とデスクトップ版は同時には動かせません。"
+                           "デスクトップ版の窓を使うか、窓を閉じてからもう一度起動してください。")
+BROWSER_RUNNING_MESSAGE = "ブラウザ版のファイル名一覧取得が動いています"
+BROWSER_RUNNING_HINT = ("ブラウザ版とデスクトップ版は同時には動かせません。ブラウザの画面で「終了」を押すか、"
+                        "stop.bat で止めてから、もう一度開いてください。")
 
 
 # ------------------------------------------------------------------
