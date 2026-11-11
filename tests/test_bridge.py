@@ -159,7 +159,7 @@ class BridgeTest(unittest.TestCase):
         self.addCleanup(b.finish)
         self.assertEqual(b.read()[0]["event"], "static")
         self.assertEqual(b.read()[0]["event"], "started")
-        env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(self.local))
+        env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(self.local), PYTHONIOENCODING="utf-8")
         res = subprocess.run([sys.executable, "start_app.py", "--no-browser"], cwd=ROOT, env=env,
                              capture_output=True, text=True, encoding="utf-8", timeout=60)
         self.assertEqual(res.returncode, 1)

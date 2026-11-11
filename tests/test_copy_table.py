@@ -14,7 +14,7 @@ class CopyTableTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         out = subprocess.run([NODE, str(ROOT / "tests" / "js" / "copytable_check.mjs")],
-                             capture_output=True, text=True, timeout=30, check=True)
+                             capture_output=True, text=True, encoding="utf-8", timeout=30, check=True)
         cls.data = json.loads(out.stdout)
 
     def test_tsv_columns(self):

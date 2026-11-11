@@ -14,7 +14,7 @@ class PrintSheetTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         out = subprocess.run([NODE, str(ROOT / "tests" / "js" / "printsheet_check.mjs")],
-                             capture_output=True, text=True, timeout=30, check=True)
+                             capture_output=True, text=True, encoding="utf-8", timeout=30, check=True)
         cls.data = json.loads(out.stdout)
 
     def test_sheet_has_title_meta_and_rows_in_screen_order(self):

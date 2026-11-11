@@ -179,8 +179,10 @@ class StopEntryStandaloneTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             shutil.copy(ROOT / "process_manager.py", tmp)          # app\ も config\ も無い
             env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(Path(tmp) / "local"))
-            out = subprocess.run([sys.executable, "-I", "process_manager.py"], cwd=tmp, env=env,
-                                 capture_output=True, text=True, timeout=30)
+            # -I は PYTHONIOENCODING を見ないので、文字コードは -X utf8 で決める
+            # (OS の既定のままだと、英語の Windows(cp1252)では日本語を書けずに落ちる。現場は cp932)
+            out = subprocess.run([sys.executable, "-I", "-X", "utf8", "process_manager.py"], cwd=tmp, env=env,
+                                 capture_output=True, text=True, encoding="utf-8", timeout=30)
             self.assertEqual(out.returncode, 0, out.stderr)
             self.assertIn("起動していません", out.stdout)
             self.assertEqual(out.stderr, "")
@@ -195,9 +197,9 @@ class StartupFailureTest(unittest.TestCase):
             shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(".git", "__pycache__", "tests"))
             shutil.rmtree(copy / "app" / "services")
             local = Path(tmp) / "local"
-            env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(local))
+            env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(local), PYTHONIOENCODING="utf-8")
             out = subprocess.run([sys.executable, "start_app.py", "--no-browser"], cwd=copy, env=env,
-                                 capture_output=True, text=True, timeout=60)
+                                 capture_output=True, text=True, encoding="utf-8", timeout=60)
             self.assertEqual(out.returncode, 1)
             self.assertIn("app/services", out.stderr)
             self.assertIn("配布フォルダを丸ごと入れ直してください", out.stderr)
@@ -210,9 +212,9 @@ class StartupFailureTest(unittest.TestCase):
             shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns(".git", "__pycache__", "tests"))
             (copy / "config" / "app.json").write_text("{壊れた", encoding="utf-8")
             local = Path(tmp) / "local"
-            env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(local))
+            env = dict(os.environ, FILELIST_TOOL_LOCAL_DIR=str(local), PYTHONIOENCODING="utf-8")
             out = subprocess.run([sys.executable, "start_app.py", "--no-browser"], cwd=copy, env=env,
-                                 capture_output=True, text=True, timeout=60)
+                                 capture_output=True, text=True, encoding="utf-8", timeout=60)
             self.assertEqual(out.returncode, 1)
             self.assertIn("config", out.stderr)
             self.assertNotIn("Traceback (most recent call last)", out.stderr.split("ログ:")[0])
